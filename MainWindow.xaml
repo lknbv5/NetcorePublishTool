@@ -1,0 +1,155 @@
+﻿<Window x:Class="PublishTool.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:PublishTool"
+        mc:Ignorable="d"
+        Title=".Net Core WebApi发版工具" Height="700" Width="900" ResizeMode="CanMinimize">
+    <Grid Margin="10">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 服务器配置区域 -->
+        <GroupBox Header="服务器配置" Grid.Row="0" Padding="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="160"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+
+
+                <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.ColumnSpan="2">
+                    <ComboBox x:Name="cmbServers"  
+                        Width="180" Margin="5"
+                        ItemsSource="{Binding Servers}"
+                        SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
+                        DisplayMemberPath="Name"
+                        SelectionChanged="CmbServers_SelectionChanged"/>        
+                    <StackPanel  Orientation="Horizontal"  >
+                        <Button Content="+" Width="30" Margin="5" Click="BtnAddServer_Click" ToolTip="将当前配置添加到配置列表中"/>
+                        <Button Content="-" Width="30" Margin="5" Click="BtnRemoveServer_Click" ToolTip="移除当前选中的配置"/>
+                    </StackPanel>
+                </StackPanel>
+                
+
+                <StackPanel Grid.Column="3" Orientation="Horizontal"  >
+                    <Button Content="保存配置" Width="80" Margin="5" Click="BtnSaveConfig_Click"/>
+                    <Button Content="加载配置" Width="80" Margin="5" Click="BtnLoadConfig_Click"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal">
+                    <TextBlock>配置名称:</TextBlock>
+                    <TextBox x:Name="txtName" Width="120" Margin="5" Tag="服务器名称" Text="{Binding SelectedServer.Name, Mode=TwoWay}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal">
+                    <TextBlock>服务器ip:</TextBlock>
+                    <TextBox x:Name="txtServerIP" Width="100" Margin="5" Tag="服务器IP" Text="{Binding SelectedServer.ServerIP, Mode=TwoWay}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="2" Grid.Row="1" Orientation="Horizontal">
+                    <TextBlock>用户名:</TextBlock>
+                    <TextBox x:Name="txtUserName" Width="120" Margin="5" Tag="用户名" Text="{Binding SelectedServer.UserName, Mode=TwoWay}"/>
+                </StackPanel>
+
+                <StackPanel Grid.Column="3" Grid.Row="1" Orientation="Horizontal">
+                    <TextBlock>密码:</TextBlock>
+                    <PasswordBox x:Name="txtPassword" Width="150" Margin="5" Tag="用户名" PasswordChanged="txtPassword_PasswordChanged"/>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- 部署参数区域 -->
+        <GroupBox Header="部署参数" Grid.Row="1" Padding="5">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+
+                <StackPanel Grid.Column="0">
+                    <DockPanel>
+                        <TextBlock>本地发布目录:</TextBlock>
+                        <TextBox  Width="180" x:Name="txtLocalPath"  Margin="5" Tag="本地发布目录" Text="{Binding SelectedServer.LocalPath, Mode=TwoWay}"/>
+                        <Button  Content="浏览..." Width="40" Margin="5" Click="BtnBrowseLocal_Click" />
+                    </DockPanel>
+                </StackPanel>
+
+                <StackPanel Grid.Column="1">
+                    <DockPanel DockPanel.Dock="Left">
+                        <TextBlock>服务器部署路径:</TextBlock>
+                        <TextBox x:Name="txtRemotePath" Margin="5" Tag="服务器部署路径" Text="{Binding SelectedServer.RemotePath, Mode=TwoWay}"/>
+                    </DockPanel>
+                    <DockPanel DockPanel.Dock="Left">
+                        <TextBlock>服务(WinService)名称:</TextBlock>
+                        <TextBox x:Name="txtServiceName" Margin="5" Tag="Windows服务名称" Text="{Binding SelectedServer.ServiceName, Mode=TwoWay}"/>
+                    </DockPanel>
+                    <DockPanel DockPanel.Dock="Left">
+                        <TextBlock>Exe名称:</TextBlock>
+                        <TextBox x:Name="txtExeName" Margin="5" Tag="Windows服务名称" Text="{Binding SelectedServer.ExeName, Mode=TwoWay}"/>
+                    </DockPanel>
+                </StackPanel>
+            </Grid>
+        </GroupBox>
+
+        <!-- 文件传输区域 -->
+        <GroupBox Header="文件传输" Grid.Row="2" Padding="5">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <StackPanel Orientation="Horizontal">
+                    <RadioButton x:Name="rbFull" Content="全量上传" 
+                               GroupName="UploadMode" Margin="5" IsChecked="{Binding IsFullCheck}"/>
+                    <RadioButton x:Name="rbPartial" Content="指定文件" 
+                               GroupName="UploadMode" Margin="5"/>
+                    <Button Content="选择文件" Margin="5" Click="BtnSelectFiles_Click"
+                          IsEnabled="{Binding IsChecked, ElementName=rbPartial}"/>
+                </StackPanel>
+
+                <ListBox x:Name="lstFiles" Grid.Row="1" Margin="5" Height="120"
+                       ItemsSource="{Binding SelectedFiles}">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding}"/>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            </Grid>
+        </GroupBox>
+
+        <!-- 日志区域 -->
+        <GroupBox Header="操作日志" Grid.Row="3" Padding="5">
+            <TextBox x:Name="txtLog" IsReadOnly="True" 
+                   VerticalScrollBarVisibility="Auto"
+                   FontFamily="Consolas" FontSize="12"/>
+        </GroupBox>
+
+        <!-- 进度条和操作按钮 -->
+        <StackPanel Grid.Row="4" Orientation="Horizontal" 
+                  HorizontalAlignment="Right">
+            <ProgressBar x:Name="progressBar" Width="200" Height="20"
+                       Margin="5" IsIndeterminate="False"/>
+            <Button Content="清空日志" Width="100" Margin="5"
+                  Click="DelLog_Click"/>
+            <Button Content="开始部署" Width="100" Margin="5" x:Name="BtnDeploy"
+                  Click="BtnDeploy_Click"/>
+            <Button Content="停止" Width="80" Margin="5" x:Name="BtnStop"
+                  Click="BtnStop_Click" IsEnabled="False"/>
+        </StackPanel>
+    </Grid>
+</Window>
