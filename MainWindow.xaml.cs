@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -10,6 +11,7 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using Ude;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
 namespace PublishTool
@@ -241,7 +243,11 @@ namespace PublishTool
             foreach (var dir in Directory.GetDirectories(localPath))
             {
                 var newRemotePath = Path.Combine(remotePath, Path.GetFileName(dir));
-                client.CreateDirectory("/"+newRemotePath);
+                //判断远程目录是否存在，不存在则创建
+                if (!client.Exists("/" + ConvertToLinuxPath(newRemotePath)))
+                {
+                    client.CreateDirectory("/" + ConvertToLinuxPath(newRemotePath));
+                }
                 UploadDirectory(client, dir,newRemotePath);
             }
         }
@@ -270,6 +276,26 @@ namespace PublishTool
 
                 if (serviceExists)
                 {
+                    //检查服务的参数是否与本地配置一致
+                    var getServiceCommand = $"sc qc {SelectedServer.ServiceName}";
+                    var getResult = sshClient.RunCommand(getServiceCommand);
+                    var localConfig = $"binPath= \"{SelectedServer.LocalPath}\\{SelectedServer.ExeName}\"";
+                    if (!getResult.Result.Contains(localConfig))
+                    {
+                        //如果参数不一致，则删除服务
+                        //弹窗提醒用户,存在同名但不同运行参数的服务,是否删除
+                        var message = $"存在同名但不同运行参数的服务: {SelectedServer.ServiceName}\n是否删除?";
+                        var caption = "警告";
+                        var button = MessageBoxButton.YesNo;
+                        var icon = MessageBoxImage.Warning;
+                        var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                        if (result == MessageBoxResult.Yes)
+                        {
+                            var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
+                            var deleteResult = sshClient.RunCommand(deleteServiceCommand);
+                            _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                        }
+                    }
                     // 如果服务存在，停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
@@ -316,7 +342,37 @@ namespace PublishTool
                 sshClient.Disconnect();
             }
         }
+        private string DetectEncoding(byte[] data)
+        {
+            CharsetDetector detector = new CharsetDetector();
+            detector.Feed(data, 0, data.Length);
+            detector.DataEnd();
 
+            if (detector.Charset != null)
+            {
+                return detector.Charset; // 返回检测到的编码名称
+            }
+            else
+            {
+                return "未知编码";
+            }
+        }
+
+        //编码转换
+        private string ConvertEncoding(string str, string targetEncoding)
+        {
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+            // 将字符串转换为字节数组
+            var bytes = Encoding.Default.GetBytes(str);
+            // 自动检测源编码
+            var detectedEncodingName = DetectEncoding(bytes);
+            var sourceEnc = Encoding.GetEncoding(detectedEncodingName);
+
+            // 转换为目标编码
+            var targetEnc = Encoding.GetEncoding(targetEncoding);
+            return targetEnc.GetString(bytes);
+        }
         private void Log(string message)
         {
             Dispatcher.Invoke(() =>
@@ -447,6 +503,222 @@ namespace PublishTool
         private void txtPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
             this.SelectedServer.Password = (sender as PasswordBox).Password;
+        }
+        //检查服务运行状态
+        private void BtnCheckService_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+
+            try
+            {
+                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                {
+                    sshClient.Connect();
+
+                    // 检查服务状态
+                    var checkServiceCommand = $"sc query {SelectedServer.ServiceName}";
+                    var result = sshClient.RunCommand(checkServiceCommand);
+
+                    if (result.Result.Contains("RUNNING"))
+                    {
+                        Log($"✅ 服务 {SelectedServer.ServiceName} 正在运行");
+                    }
+                    else if (result.Result.Contains("STOPPED"))
+                    {
+                        Log($"⏹ 服务 {SelectedServer.ServiceName} 已停止");
+                    }
+                    else if (result.Result.Contains("1060"))
+                    {
+                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装");
+                    }
+                    else
+                    {
+                        Log($"⚠️ 无法确定服务 {SelectedServer.ServiceName} 的状态");
+                    }
+
+                    sshClient.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 检查服务状态时出错: {ex.Message}");
+            }
+        }
+        //开启服务
+        private void BtnStartService_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+
+            try
+            {
+                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                {
+                    sshClient.Connect();
+
+                    // 启动服务
+                    var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
+                    var result = sshClient.RunCommand(startServiceCommand);
+
+                    if (result.Result.Contains("RUNNING"))
+                    {
+                        Log($"✅ 服务 {SelectedServer.ServiceName} 已成功启动");
+                    }
+                    else if (result.Result.Contains("1060"))
+                    {
+                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装");
+                    }
+                    else
+                    {
+                        Log($"⚠️ 无法启动服务 {SelectedServer.ServiceName}: {result.Result}");
+                    }
+
+                    sshClient.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 启动服务时出错: {ex.Message}");
+            }
+        }
+        //停止服务
+        private void BtnStopService_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+
+            try
+            {
+                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                {
+                    sshClient.Connect();
+
+                    // 停止服务
+                    var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
+                    var result = sshClient.RunCommand(stopServiceCommand);
+
+                    if (result.Result.Contains("STOPPED"))
+                    {
+                        Log($"✅ 服务 {SelectedServer.ServiceName} 已成功停止");
+                    }
+                    else if (result.Result.Contains("1062"))
+                    {
+                        Log($"⚠️ 服务{SelectedServer.ServiceName} 未启动!");
+                    }
+                    else if (result.Result.Contains("1060"))
+                    {
+                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装!");
+                    }
+                    else
+                    {
+                        Log($"⚠️ 无法停止服务 {SelectedServer.ServiceName}: {ConvertEncoding(result.Result,"UTF-8")}");
+                    }
+
+                        sshClient.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 停止服务时出错: {ex.Message}");
+            }
+        }
+        //移除服务
+        private void BtnRemoveService_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+
+            try
+            {
+                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                {
+                    sshClient.Connect();
+
+                    // 停止服务
+                    var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
+                    var stopResult = sshClient.RunCommand(stopServiceCommand);
+                    _worker.ReportProgress(0, $"$ {stopServiceCommand}\n{stopResult.Result}");
+
+                    // 删除服务
+                    var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
+                    var deleteResult = sshClient.RunCommand(deleteServiceCommand);
+                    _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+
+                    if (deleteResult.Result.Contains("SUCCESS"))
+                    {
+                        Log($"✅ 服务 {SelectedServer.ServiceName} 已成功移除!");
+                    }
+                    else if (deleteResult.Result.Contains("1060"))
+                    {
+                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装!");
+                    }
+                    else
+                    {
+                        Log($"⚠️ 无法移除服务 {SelectedServer.ServiceName}: {deleteResult.Result}");
+                    }
+
+                    sshClient.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 移除服务时出错: {ex.Message}");
+            }
+        }
+        //查看服务器, 以API_开头的服务列表
+        private void BtnCheckServiceList_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+
+            try
+            {
+                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                {
+                    sshClient.Connect();
+
+                    // 获取所有服务并筛选以 "API_" 开头的服务
+                    var listServicesCommand = "sc query state= all";
+                    var result = sshClient.RunCommand(listServicesCommand);
+
+                    if (!string.IsNullOrWhiteSpace(result.Result))
+                    {
+                        Log("✅ 以下是以 'API_' 开头的服务列表:");
+                        var services = result.Result.Split(new[] { '\n', '\r' }, StringSplitOptions.RemoveEmptyEntries)
+                                                    .Where(line => line.Trim().Contains("SERVICE_NAME: API_"));
+                        foreach (var service in services)
+                        {
+                            Log(service.Trim());
+                        }
+                    }
+                    else
+                    {
+                        Log("⚠️ 未找到任何服务!");
+                    }
+
+                    sshClient.Disconnect();
+                }
+            }
+            catch (Exception ex)
+            {
+                Log($"❌ 获取服务列表时出错: {ex.Message}");
+            }
         }
     }
 }

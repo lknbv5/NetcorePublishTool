@@ -20,6 +20,8 @@ public class ServerConfig : INotifyPropertyChanged
         {
             _name = value;
             OnPropertyChanged(nameof(Name));
+            // 自动更新 ServiceName
+            ServiceName = $"API_{_name}";
         }
     }
 

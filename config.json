@@ -1,1 +1,43 @@
-[{"Name":"test","ServerIP":"10.31.6.3","Username":"Administrator","Password":"GangTongData@2022","LocalPath":"E:/桌面/PublishTool/Test","RemotePath":"D:/LKTest","ServiceName":"LKTest","ExeName":"Test.exe"}]
+[
+  {
+    "ExeName": "Test.exe",
+    "LocalPath": "",
+    "Name": "test",
+    "Password": "GangTongData@2022",
+    "RemotePath": "D:/LKTest",
+    "ServerIP": "10.31.6.3",
+    "ServiceName": "API_test",
+    "Username": "Administrator"
+  },
+  {
+    "ExeName": "WebApi.exe",
+    "LocalPath": "",
+    "Name": "BIMScoreSystemAPI_Test",
+    "Password": "GangTongData@2022",
+    "RemotePath": "D:/IISproject/BIMScoreSystemAPI_Test",
+    "ServerIP": "10.31.6.3",
+    "ServiceName": "API_BIMScoreSystemAPI_Test",
+    "Username": "Administrator"
+  },
+  {
+    "ExeName": "WebApi.exe",
+    "LocalPath": "",
+    "Name": "CJGIIDev",
+    "Password": "GangTongData@2022",
+    "RemotePath": "D:/IISproject/cangjingge_II_Dev",
+    "ServerIP": "10.31.6.3",
+    "ServiceName": "API_CJGIIDev",
+    "Username": "Administrator"
+  },
+  {
+    "ExeName": "WebApi_WY.exe",
+    "LocalPath": "",
+    "Name": "WYDev",
+    "Password": "GangTongData@2022",
+    "RemotePath": "D:/IISproject/cangjingge_WY_Dev",
+    "ServerIP": "10.31.6.3",
+    "ServiceName": "API_WYDev",
+    "Username": "Administrator"
+  }
+
+]
