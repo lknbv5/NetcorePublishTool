@@ -1,4 +1,5 @@
 ﻿using Renci.SshNet;
+using Renci.SshNet.Messages;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -8,6 +9,7 @@ using System.IO;
 using System.Linq;
 using System.Security;
 using System.Text;
+using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -110,13 +112,21 @@ namespace PublishTool
             if (File.Exists(ConfigPath))
             {
                 var json = File.ReadAllText(ConfigPath);
-                var loadedServers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfig>>(json);
-                Servers.Clear();
-                foreach (var server in loadedServers)
+                try
                 {
-                    Servers.Add(server);
+                    var loadedServers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfig>>(json);
+                    Servers.Clear();
+                    foreach (var server in loadedServers)
+                    {
+                        Servers.Add(server);
+                    }
+                    Log("✅ 配置已加载");
                 }
-                Log("✅ 配置已加载");
+                catch (Exception ex)
+                {
+                    Log("⚠️ 配置加载失败,请检查配置文件格式!");
+                }
+                
             }
 
             if (Servers.Count>0)
@@ -210,6 +220,20 @@ namespace PublishTool
             {
                 Log("⚠️ 请选择要发布的文件!");
                 return;
+            }
+
+            //如果IsFullCheck=true, 弹窗提醒是否全量发布
+            if (IsFullCheck)
+            {
+                var message = "是否全量发布？\n\n全量发布将会覆盖远程服务器上所有的文件, 包括配置文件,可能会导致未知问题发生，请确认！";
+                var caption = "警告";
+                var button = MessageBoxButton.YesNo;
+                var icon = MessageBoxImage.Warning;
+                var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                if (result == MessageBoxResult.No)
+                {
+                    return;
+                }
             }
 
             if (!_isDeploying)
@@ -331,6 +355,7 @@ namespace PublishTool
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
                     _worker.ReportProgress(0, $"$ {stopServiceCommand}\n{stopResult.Result}");
+                    WaitForServiceToStop(sshClient, SelectedServer.ServiceName);
                 }
 
                 // 上传文件
@@ -373,6 +398,33 @@ namespace PublishTool
                 sshClient.Disconnect();
             }
         }
+
+        private void WaitForServiceToStop(SshClient sshClient, string serviceName)
+        {
+            while (true)
+            {
+                // 检查服务状态
+                var checkServiceCommand = $"sc query {serviceName}";
+                var result = sshClient.RunCommand(checkServiceCommand);
+
+                if (result.Result.Contains("STOPPED"))
+                {
+                    Log($"✅ 服务 {serviceName} 已停止");
+                    break;
+                }
+                else if (result.Result.Contains("1060"))
+                {
+                    Log($"⚠️ 服务 {serviceName} 未安装");
+                    break;
+                }
+                else
+                {
+                    Log($"⏳ 等待服务 {serviceName} 停止...");
+                    System.Threading.Thread.Sleep(1000); // 等待1秒后重试
+                }
+            }
+        }
+
         private string DetectEncoding(byte[] data)
         {
             CharsetDetector detector = new CharsetDetector();
@@ -477,7 +529,10 @@ namespace PublishTool
                 Log("⚠️ 请先选择配置文件!");
                 return;
             }
-            var json = System.Text.Json.JsonSerializer.Serialize(Servers);
+            var json = System.Text.Json.JsonSerializer.Serialize(Servers, new JsonSerializerOptions
+            {
+                WriteIndented = true
+            });
             File.WriteAllText(ConfigPath, json);
             Log("✅ 配置已保存");
         }

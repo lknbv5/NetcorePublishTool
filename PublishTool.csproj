@@ -5,6 +5,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <ApplicaionIcon>logo.ico</ApplicaionIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -15,12 +16,22 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="logo.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
     <COMReference Include="{215d64d2-031c-33c7-96e3-61794cd1ee61}">
       <WrapperTool>tlbimp</WrapperTool>
       <VersionMinor>0</VersionMinor>
       <VersionMajor>2</VersionMajor>
       <Guid>215d64d2-031c-33c7-96e3-61794cd1ee61</Guid>
     </COMReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="logo.ico">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
   </ItemGroup>
 
   <ItemGroup>

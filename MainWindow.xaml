@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:PublishTool"
         mc:Ignorable="d"
+        Icon="logo.ico"
         Title=".Net Core WebApi发版工具" Height="700" Width="900" ResizeMode="CanMinimize">
     <Grid Margin="10">
         <Grid.RowDefinitions>
