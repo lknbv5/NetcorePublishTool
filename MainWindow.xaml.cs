@@ -261,7 +261,25 @@ namespace PublishTool
                 _worker.ReportProgress(0, $"⬆️ 已上传: {remoteFileName}");
             }
         }
+        /// <summary>
+        /// 获取服务最终执行的exe路径
+        /// </summary>
+        /// <param name="serviceName"></param>
+        /// <param name="sshClient"></param>
+        /// <returns></returns>
+        private string GetServiceExecutablePath(string serviceName, SshClient sshClient)
+        {
+            // 使用 PowerShell 查询注册表中的 Application 键
+            var command = $"powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\{serviceName}\\Parameters' -Name Application | Select-Object -ExpandProperty Application\"";
+            var result = sshClient.RunCommand(command);
 
+            if (!string.IsNullOrWhiteSpace(result.Result))
+            {
+                return result.Result.Trim();
+            }
+
+            return null;
+        }
         private void InstallWindowsService(SftpClient client)
         {
             using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
@@ -276,26 +294,29 @@ namespace PublishTool
 
                 if (serviceExists)
                 {
-                    //检查服务的参数是否与本地配置一致
-                    var getServiceCommand = $"sc qc {SelectedServer.ServiceName}";
-                    var getResult = sshClient.RunCommand(getServiceCommand);
-                    var localConfig = $"binPath= \"{SelectedServer.LocalPath}\\{SelectedServer.ExeName}\"";
-                    if (!getResult.Result.Contains(localConfig))
+                    // 获取服务的运行路径
+                    var currentExePath = GetServiceExecutablePath(SelectedServer.ServiceName, sshClient);
+                    if (currentExePath != null)
                     {
-                        //如果参数不一致，则删除服务
-                        //弹窗提醒用户,存在同名但不同运行参数的服务,是否删除
-                        var message = $"存在同名但不同运行参数的服务: {SelectedServer.ServiceName}\n是否删除?";
-                        var caption = "警告";
-                        var button = MessageBoxButton.YesNo;
-                        var icon = MessageBoxImage.Warning;
-                        var result = System.Windows.MessageBox.Show(message, caption, button, icon);
-                        if (result == MessageBoxResult.Yes)
+                        var expectedExePath = Path.Combine(SelectedServer.RemotePath, SelectedServer.ExeName).Replace("\\", "/");
+                        if (!string.Equals(currentExePath.Replace("\\", "/"), expectedExePath, StringComparison.OrdinalIgnoreCase))
                         {
-                            var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
-                            var deleteResult = sshClient.RunCommand(deleteServiceCommand);
-                            _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                            // 如果路径不一致，提示用户是否删除服务
+                            var message = $"服务 {SelectedServer.ServiceName} 的运行路径与本地配置不一致。\n当前路径: {currentExePath}\n预期路径: {expectedExePath}\n是否删除并重新安装服务？";
+                            var caption = "警告";
+                            var button = MessageBoxButton.YesNo;
+                            var icon = MessageBoxImage.Warning;
+                            var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                            if (result == MessageBoxResult.Yes)
+                            {
+                                var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
+                                var deleteResult = sshClient.RunCommand(deleteServiceCommand);
+                                _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                                serviceExists = false; // 标记服务已被删除
+                            }
                         }
                     }
+
                     // 如果服务存在，停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
