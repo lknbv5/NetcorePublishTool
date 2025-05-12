@@ -328,7 +328,8 @@ namespace PublishTool
             using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
             {
                 sshClient.Connect();
-
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                 // 检查服务是否存在
                 var checkServiceCommand = $"sc query {SelectedServer.ServiceName}";
                 var checkResult = sshClient.RunCommand(checkServiceCommand);
@@ -383,7 +384,7 @@ namespace PublishTool
                 if (serviceExists)
                 {
                     // 如果服务存在，重新启动服务
-                    var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
+                    var startServiceCommand = $"chcp 65001 & sc start {SelectedServer.ServiceName}";
                     var startResult = sshClient.RunCommand(startServiceCommand);
                     _worker.ReportProgress(0, $"$ {startServiceCommand}\n{startResult.Result}");
                 }
@@ -410,6 +411,8 @@ namespace PublishTool
 
         private void WaitForServiceToStop(SshClient sshClient, string serviceName)
         {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
             while (true)
             {
                 // 检查服务状态
@@ -607,10 +610,12 @@ namespace PublishTool
                 using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                 {
                     sshClient.Connect();
-
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                     // 检查服务状态
                     var checkServiceCommand = $"sc query {SelectedServer.ServiceName}";
                     var result = sshClient.RunCommand(checkServiceCommand);
+                    Log($"$ {checkServiceCommand}\n{result.Result}");
 
                     if (result.Result.Contains("RUNNING"))
                     {
@@ -651,10 +656,12 @@ namespace PublishTool
                 using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                 {
                     sshClient.Connect();
-
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                     // 启动服务
                     var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
                     var result = sshClient.RunCommand(startServiceCommand);
+                    Log( $"$ {startServiceCommand}\n{result.Result}");
 
                     if (result.Result.Contains("RUNNING"))
                     {
@@ -691,7 +698,8 @@ namespace PublishTool
                 using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                 {
                     sshClient.Connect();
-
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                     // 停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var result = sshClient.RunCommand(stopServiceCommand);
@@ -735,7 +743,8 @@ namespace PublishTool
                 using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                 {
                     sshClient.Connect();
-
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                     // 停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
@@ -746,7 +755,7 @@ namespace PublishTool
                     var deleteResult = sshClient.RunCommand(deleteServiceCommand);
                     Log( $"$ {deleteServiceCommand}\n{deleteResult.Result}");
 
-                    if (deleteResult.Result.Contains("成功")|| deleteResult.Result.Contains("DeleteService")|| deleteResult.Result.Contains("SUCCESS"))
+                    if (deleteResult.Result.Contains("成功") || deleteResult.Result.Contains("SUCCESS") || deleteResult.Result.Contains("DeleteService"))
                     {
                         Log($"✅ 服务 {SelectedServer.ServiceName} 已成功移除!");
                     }
@@ -781,10 +790,12 @@ namespace PublishTool
                 using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                 {
                     sshClient.Connect();
-
+                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
                     // 获取所有服务并筛选以 "API_" 开头的服务
                     var listServicesCommand = "sc query state= all";
                     var result = sshClient.RunCommand(listServicesCommand);
+                    Log($"$ {listServicesCommand}\n{result.Result}");
 
                     if (!string.IsNullOrWhiteSpace(result.Result))
                     {
