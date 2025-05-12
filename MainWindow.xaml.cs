@@ -1,4 +1,5 @@
-﻿using Renci.SshNet;
+﻿using HandyControl.Tools;
+using Renci.SshNet;
 using Renci.SshNet.Messages;
 using System;
 using System.Collections.Generic;
@@ -93,6 +94,7 @@ namespace PublishTool
         public MainWindow()
         {
             InitializeComponent();
+            ConfigHelper.Instance.SetWindowDefaultStyle();
             DataContext = this;
             IsFullCheck = true;
             // 初始化后台工作线程
@@ -157,11 +159,11 @@ namespace PublishTool
             _isDeploying = false;
             BtnDeploy.IsEnabled = true;
             BtnStop.IsEnabled = false;
-            progressBar.Value = 0;
+            //progressBar.Value = 0;
 
             if (e.Error != null)
             {
-                Log($"⚠️ 部署失败: {e.Error.Message}");
+                Log($"❌ 部署失败: {e.Error.Message}");
             }
             else if (e.Cancelled)
             {
@@ -263,7 +265,9 @@ namespace PublishTool
             }
             catch (Exception ex)
             {
-                Dispatcher.Invoke(() => Log($"❌ 错误: {ex.Message}"));
+            //    Dispatcher.Invoke(() => Log($"❌ 错误: {ex.Message}"));
+                e.Result = null;
+                throw;
             }
         }
 
@@ -291,6 +295,11 @@ namespace PublishTool
             using (var fileStream = File.OpenRead(localFile))
             {
                 var remoteFileName =Path.Combine(remotePath, Path.GetFileName(localFile));
+                //判断远程目录是否存在，不存在则创建
+                if (!client.Exists("/" + ConvertToLinuxPath(Path.GetDirectoryName(remoteFileName))))
+                {
+                    client.CreateDirectory("/" + ConvertToLinuxPath(Path.GetDirectoryName(remoteFileName)));
+                }
                 client.UploadFile(fileStream, "/" + ConvertToLinuxPath( remoteFileName));
                 _worker.ReportProgress(0, $"⬆️ 已上传: {remoteFileName}");
             }
@@ -701,7 +710,7 @@ namespace PublishTool
                     }
                     else
                     {
-                        Log($"⚠️ 无法停止服务 {SelectedServer.ServiceName}: {ConvertEncoding(result.Result,"UTF-8")}");
+                        Log($"⚠️ 无法停止服务 {SelectedServer.ServiceName}: {result.Result}");
                     }
 
                         sshClient.Disconnect();
@@ -730,14 +739,14 @@ namespace PublishTool
                     // 停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
-                    _worker.ReportProgress(0, $"$ {stopServiceCommand}\n{stopResult.Result}");
+                    Log( $"$ {stopServiceCommand}\n{stopResult.Result}");
 
                     // 删除服务
                     var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
                     var deleteResult = sshClient.RunCommand(deleteServiceCommand);
-                    _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                    Log( $"$ {deleteServiceCommand}\n{deleteResult.Result}");
 
-                    if (deleteResult.Result.Contains("SUCCESS"))
+                    if (deleteResult.Result.Contains("成功")|| deleteResult.Result.Contains("DeleteService")|| deleteResult.Result.Contains("SUCCESS"))
                     {
                         Log($"✅ 服务 {SelectedServer.ServiceName} 已成功移除!");
                     }
@@ -812,6 +821,17 @@ namespace PublishTool
             if (dialog.ShowDialog() == true)
             {
                 txtConfigPath.Text = dialog.FileName;
+            }
+        }
+
+        private void lstFiles_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        {
+            // 获取双击的项
+            if (lstFiles.SelectedItem is string selectedFile)
+            {
+                // 从绑定的集合中移除该项
+                var files = DataContext as dynamic; // 假设 DataContext 是绑定的 ViewModel
+                files?.SelectedFiles?.Remove(selectedFile);
             }
         }
     }
