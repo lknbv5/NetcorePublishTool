@@ -80,8 +80,8 @@ namespace PublishTool
         }
 
         // 选择的文件列表
-        private ObservableCollection<string> _selectedFiles = new ObservableCollection<string>();
-        public ObservableCollection<string> SelectedFiles
+        private ObservableCollection<FilrOrDir> _selectedFiles = new ObservableCollection<FilrOrDir>();
+        public ObservableCollection<FilrOrDir> SelectedFiles
         {
             get => _selectedFiles;
             set
@@ -191,14 +191,39 @@ namespace PublishTool
             {
                 Multiselect = true,
                 InitialDirectory = txtLocalPath.Text,
+                Title= "请选择文件(可多选)"
             };
 
             if (dialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
             {
-                SelectedFiles.Clear();
                 foreach (var file in dialog.FileNames)
                 {
-                    SelectedFiles.Add(file);
+                    SelectedFiles.Add(new FilrOrDir() { Path = file ,Type="File"});
+                }
+            }
+        }
+
+
+        private void BtnSelectDirs_Click(object sender, RoutedEventArgs e)
+        {
+            //var folderDialog = new FolderBrowserDialog();
+            //// 选择文件夹
+            //if (folderDialog.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            //{
+            //    SelectedFiles.Add(new FilrOrDir { Path = folderDialog.SelectedPath, Type = "文件夹" });
+            //}
+            var dialog = new Ookii.Dialogs.Wpf.VistaFolderBrowserDialog
+            {
+                Multiselect = true,
+                Description = "请选择文件夹(可多选)",
+                UseDescriptionForTitle = true,
+            };
+
+            if (dialog.ShowDialog() == true)
+            {
+                foreach (var folder in dialog.SelectedPaths)
+                {
+                    SelectedFiles.Add(new FilrOrDir { Path = folder, Type = "Dir" });
                 }
             }
         }
@@ -375,9 +400,17 @@ namespace PublishTool
                 }
                 else
                 {
-                    foreach (var file in SelectedFiles)
+                    foreach (var path in SelectedFiles)
                     {
-                        UploadFile(client, file,SelectedServer.RemotePath);
+                        //UploadFile(client, file,SelectedServer.RemotePath);
+                        if (path.Type == "文件") // 如果是文件
+                        {
+                            UploadFile(client, path.Path, SelectedServer.RemotePath);
+                        }
+                        else // 如果是文件夹
+                        {
+                            UploadDirectory(client, path.Path, Path.Combine(SelectedServer.RemotePath, Path.GetFileName(path.Path)));
+                        }
                     }
                 }
 
@@ -838,12 +871,46 @@ namespace PublishTool
         private void lstFiles_MouseDoubleClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
         {
             // 获取双击的项
-            if (lstFiles.SelectedItem is string selectedFile)
+            if (lstFiles.SelectedItem is FilrOrDir selectedFile)
             {
                 // 从绑定的集合中移除该项
                 var files = DataContext as dynamic; // 假设 DataContext 是绑定的 ViewModel
                 files?.SelectedFiles?.Remove(selectedFile);
             }
+        }
+
+        private void BtnClearFileList_Click(object sender, RoutedEventArgs e)
+        {
+            SelectedFiles.Clear();
+        }
+    }
+    public class FilrOrDir : INotifyPropertyChanged
+    {
+        private string _type;
+        public string Type
+        {
+            get => _type;
+            set
+            {
+                _type = value;
+                OnPropertyChanged(nameof(Type));
+            }
+        }
+        private string _path;
+        public string Path
+        {
+            get => _path;
+            set
+            {
+                _path = value;
+                OnPropertyChanged(nameof(Path));
+            }
+        }
+
+        public event PropertyChangedEventHandler PropertyChanged;
+        protected virtual void OnPropertyChanged(string propertyName)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
