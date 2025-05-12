@@ -45,13 +45,15 @@
                 </StackPanel>
                 
 
-                <StackPanel Grid.Column="3" Orientation="Horizontal"  >
-                    <Button Content="保存配置" Width="80" Margin="5" Click="BtnSaveConfig_Click"/>
-                    <Button Content="加载配置" Width="80" Margin="5" Click="BtnLoadConfig_Click"/>
+                <StackPanel Grid.ColumnSpan="2" Grid.Column="2" Orientation="Horizontal" >
+                    <TextBox  Width="250" x:Name="txtConfigPath"  Margin="5" Tag="配置文件目录" Text="{Binding ConfigPath, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button  Content="浏览..." Width="40" Margin="5" Click="BtnConfigBrowseLocal_Click" />
+                    <Button Content="保存配置" Width="60" Margin="5" Click="BtnSaveConfig_Click"/>
+                    <Button Content="加载配置" Width="60" Margin="5" Click="BtnLoadConfig_Click"/>
                 </StackPanel>
 
-                <StackPanel Grid.Column="0" Grid.Row="1" Orientation="Horizontal">
-                    <TextBlock>配置名称:</TextBlock>
+                <StackPanel Grid.Column="0" Grid.Row="1" Margin="0 5 0 0" Orientation="Horizontal">
+                    <TextBlock >配置名称:</TextBlock>
                     <TextBox x:Name="txtName" Width="120" Margin="5" Tag="服务器名称" Text="{Binding SelectedServer.Name, Mode=TwoWay}"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Grid.Row="1" Orientation="Horizontal">
@@ -82,7 +84,7 @@
                 <StackPanel Grid.Column="0">
                     <DockPanel>
                         <TextBlock>本地发布目录:</TextBlock>
-                        <TextBox  Width="180" x:Name="txtLocalPath"  Margin="5" Tag="本地发布目录" Text="{Binding SelectedServer.LocalPath, Mode=TwoWay}"/>
+                        <TextBox  Width="180" x:Name="txtLocalPath"  Margin="5" Tag="本地发布目录" Text="{Binding SelectedServer.LocalPath, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
                         <Button  Content="浏览..." Width="40" Margin="5" Click="BtnBrowseLocal_Click" />
                     </DockPanel>
                 </StackPanel>

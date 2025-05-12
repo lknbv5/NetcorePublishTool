@@ -54,6 +54,16 @@ namespace PublishTool
                 OnPropertyChanged(nameof(SelectedServer));
             }
         }
+        private string _configPath;
+        public string ConfigPath
+        {
+            get => _configPath;
+            set
+            {
+                _configPath = value;
+                OnPropertyChanged(nameof(ConfigPath));
+            }
+        }
 
         private bool _isFullCheck;
         public bool IsFullCheck
@@ -95,11 +105,11 @@ namespace PublishTool
 
             //默认加载exe同文件夹下的配置文件
             var exePath = System.IO.Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location);
-            var configPath = System.IO.Path.Combine(exePath, "config.json");
+            ConfigPath = System.IO.Path.Combine(exePath, "config.json");
             //判断是否存在, 存在则加载
-            if (File.Exists(configPath))
+            if (File.Exists(ConfigPath))
             {
-                var json = File.ReadAllText(configPath);
+                var json = File.ReadAllText(ConfigPath);
                 var loadedServers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfig>>(json);
                 Servers.Clear();
                 foreach (var server in loadedServers)
@@ -261,7 +271,25 @@ namespace PublishTool
                 _worker.ReportProgress(0, $"⬆️ 已上传: {remoteFileName}");
             }
         }
+        /// <summary>
+        /// 获取服务最终执行的exe路径
+        /// </summary>
+        /// <param name="serviceName"></param>
+        /// <param name="sshClient"></param>
+        /// <returns></returns>
+        private string GetServiceExecutablePath(string serviceName, SshClient sshClient)
+        {
+            // 使用 PowerShell 查询注册表中的 Application 键
+            var command = $"powershell -Command \"Get-ItemProperty -Path 'HKLM:\\SYSTEM\\CurrentControlSet\\Services\\{serviceName}\\Parameters' -Name Application | Select-Object -ExpandProperty Application\"";
+            var result = sshClient.RunCommand(command);
 
+            if (!string.IsNullOrWhiteSpace(result.Result))
+            {
+                return result.Result.Trim();
+            }
+
+            return null;
+        }
         private void InstallWindowsService(SftpClient client)
         {
             using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
@@ -276,26 +304,29 @@ namespace PublishTool
 
                 if (serviceExists)
                 {
-                    //检查服务的参数是否与本地配置一致
-                    var getServiceCommand = $"sc qc {SelectedServer.ServiceName}";
-                    var getResult = sshClient.RunCommand(getServiceCommand);
-                    var localConfig = $"binPath= \"{SelectedServer.LocalPath}\\{SelectedServer.ExeName}\"";
-                    if (!getResult.Result.Contains(localConfig))
+                    // 获取服务的运行路径
+                    var currentExePath = GetServiceExecutablePath(SelectedServer.ServiceName, sshClient);
+                    if (currentExePath != null)
                     {
-                        //如果参数不一致，则删除服务
-                        //弹窗提醒用户,存在同名但不同运行参数的服务,是否删除
-                        var message = $"存在同名但不同运行参数的服务: {SelectedServer.ServiceName}\n是否删除?";
-                        var caption = "警告";
-                        var button = MessageBoxButton.YesNo;
-                        var icon = MessageBoxImage.Warning;
-                        var result = System.Windows.MessageBox.Show(message, caption, button, icon);
-                        if (result == MessageBoxResult.Yes)
+                        var expectedExePath = Path.Combine(SelectedServer.RemotePath, SelectedServer.ExeName).Replace("\\", "/");
+                        if (!string.Equals(currentExePath.Replace("\\", "/"), expectedExePath, StringComparison.OrdinalIgnoreCase))
                         {
-                            var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
-                            var deleteResult = sshClient.RunCommand(deleteServiceCommand);
-                            _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                            // 如果路径不一致，提示用户是否删除服务
+                            var message = $"服务 {SelectedServer.ServiceName} 的运行路径与本地配置不一致。\n当前路径: {currentExePath}\n预期路径: {expectedExePath}\n是否删除并重新安装服务？";
+                            var caption = "警告";
+                            var button = MessageBoxButton.YesNo;
+                            var icon = MessageBoxImage.Warning;
+                            var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                            if (result == MessageBoxResult.Yes)
+                            {
+                                var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
+                                var deleteResult = sshClient.RunCommand(deleteServiceCommand);
+                                _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
+                                serviceExists = false; // 标记服务已被删除
+                            }
                         }
                     }
+
                     // 如果服务存在，停止服务
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
@@ -422,39 +453,33 @@ namespace PublishTool
 
         private void BtnLoadConfig_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.OpenFileDialog
+            //判断是否选择了配置文件
+            if (ConfigPath == null)
             {
-                Filter = "配置文件 (*.json)|*.json",
-                Title = "加载发版配置"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                var json = File.ReadAllText(dialog.FileName);
-                var loadedServers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfig>>(json);
-                Servers.Clear();
-                foreach (var server in loadedServers)
-                {
-                    Servers.Add(server);
-                }
-                Log("✅ 配置已加载");
+                Log("⚠️ 请先选择配置文件!");
+                return;
             }
+            var json = File.ReadAllText(ConfigPath);
+            var loadedServers = System.Text.Json.JsonSerializer.Deserialize<List<ServerConfig>>(json);
+            Servers.Clear();
+            foreach (var server in loadedServers)
+            {
+                Servers.Add(server);
+            }
+            Log("✅ 配置已加载");
         }
 
         private void BtnSaveConfig_Click(object sender, RoutedEventArgs e)
         {
-            var dialog = new Microsoft.Win32.SaveFileDialog
+            //判断是否选择了配置文件
+            if (ConfigPath == null)
             {
-                Filter = "配置文件 (*.json)|*.json",
-                Title = "保存发版配置"
-            };
-
-            if (dialog.ShowDialog() == true)
-            {
-                var json = System.Text.Json.JsonSerializer.Serialize(Servers);
-                File.WriteAllText(dialog.FileName, json);
-                Log("✅ 配置已保存");
+                Log("⚠️ 请先选择配置文件!");
+                return;
             }
+            var json = System.Text.Json.JsonSerializer.Serialize(Servers);
+            File.WriteAllText(ConfigPath, json);
+            Log("✅ 配置已保存");
         }
 
         private void BtnStop_Click(object sender, RoutedEventArgs e)
@@ -718,6 +743,20 @@ namespace PublishTool
             catch (Exception ex)
             {
                 Log($"❌ 获取服务列表时出错: {ex.Message}");
+            }
+        }
+        //配置文件浏览
+        private void BtnConfigBrowseLocal_Click(object sender, RoutedEventArgs e)
+        {
+            var dialog = new Microsoft.Win32.OpenFileDialog
+            {
+                Filter = "配置文件 (*.json)|*.json",
+                Title = "加载发版配置",
+                Multiselect = false
+            };
+            if (dialog.ShowDialog() == true)
+            {
+                txtConfigPath.Text = dialog.FileName;
             }
         }
     }
