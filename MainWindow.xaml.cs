@@ -12,6 +12,7 @@ using System.Security;
 using System.Text;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
@@ -391,7 +392,11 @@ namespace PublishTool
                     var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
                     var stopResult = sshClient.RunCommand(stopServiceCommand);
                     _worker.ReportProgress(0, $"$ {stopServiceCommand}\n{stopResult.Result}");
-                    WaitForServiceToStop(sshClient, SelectedServer.ServiceName);
+                    var rrr = WaitForServiceToStop(sshClient, SelectedServer.ServiceName);
+                    if (!rrr)//没有成功停止服务
+                    {
+                        throw new Exception("服务停止失败!");
+                    }
                 }
 
                 // 上传文件
@@ -404,7 +409,7 @@ namespace PublishTool
                     foreach (var path in SelectedFiles)
                     {
                         //UploadFile(client, file,SelectedServer.RemotePath);
-                        if (path.Type == "文件") // 如果是文件
+                        if (path.Type == "File") // 如果是文件
                         {
                             UploadFile(client, path.Path, SelectedServer.RemotePath);
                         }
@@ -442,11 +447,15 @@ namespace PublishTool
                 sshClient.Disconnect();
             }
         }
-
-        private void WaitForServiceToStop(SshClient sshClient, string serviceName)
+        //等待停下, true表示成功停止/或者不存在, false表示超时
+        private bool WaitForServiceToStop(SshClient sshClient, string serviceName)
         {
             System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
             sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+            var stopresult = false;
+            //循环等待服务停止, 超时时间为10秒
+            var timeout = 10;
+            var waitTime = 0;
             while (true)
             {
                 // 检查服务状态
@@ -456,19 +465,78 @@ namespace PublishTool
                 if (result.Result.Contains("STOPPED"))
                 {
                     Log($"✅ 服务 {serviceName} 已停止");
+                    stopresult = true;
                     break;
                 }
                 else if (result.Result.Contains("1060"))
                 {
                     Log($"⚠️ 服务 {serviceName} 未安装");
+                    stopresult = true;
                     break;
+                }
+                else if (result.Result.Contains("1062"))
+                {
+                    Log($"⚠️ 服务{SelectedServer.ServiceName} 未启动!");
+                    stopresult = true;
                 }
                 else
                 {
                     Log($"⏳ 等待服务 {serviceName} 停止...");
                     System.Threading.Thread.Sleep(1000); // 等待1秒后重试
+                    waitTime += 1;
+                    if (waitTime >= timeout)
+                    {
+                        Log($"⚠️ 服务 {serviceName} 停止超时");
+                        break;
+                    }
                 }
             }
+            return stopresult;
+        }
+
+        private bool WaitForServiceToStart(SshClient sshClient, string serviceName)
+        {
+            System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+            sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+            var startresult = false;
+            //循环等待服务启动, 超时时间为10秒
+            var timeout = 10;
+            var waitTime = 0;
+            while (true)
+            {
+                // 检查服务状态
+                var checkServiceCommand = $"sc query {serviceName}";
+                var result = sshClient.RunCommand(checkServiceCommand);
+
+                if (result.Result.Contains("RUNNING"))
+                {
+                    Log($"✅ 服务 {serviceName} 已启动");
+                    startresult = true;
+                    break;
+                }
+                else if (result.Result.Contains("1060"))
+                {
+                    Log($"⚠️ 服务 {serviceName} 未安装");
+                    startresult = true;
+                    break;
+                }
+                else if (result.Result.Contains("1056"))
+                {
+                    Log($"⚠️ 服务 {SelectedServer.ServiceName} 已在运行中");
+                }
+                else
+                {
+                    Log($"⏳ 等待服务 {serviceName} 启动中...");
+                    System.Threading.Thread.Sleep(1000); // 等待1秒后重试
+                    waitTime += 1;
+                    if (waitTime >= timeout)
+                    {
+                        Log($"⚠️ 服务 {serviceName} 启动超时");
+                        break;
+                    }
+                }
+            }
+            return startresult;
         }
 
         private string DetectEncoding(byte[] data)
@@ -677,7 +745,7 @@ namespace PublishTool
             }
         }
         //开启服务
-        private void BtnStartService_Click(object sender, RoutedEventArgs e)
+        private async void BtnStartService_Click(object sender, RoutedEventArgs e)
         {
             if (SelectedServer == null)
             {
@@ -687,32 +755,22 @@ namespace PublishTool
 
             try
             {
-                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
-                {
-                    sshClient.Connect();
-                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
-                    // 启动服务
-                    var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
-                    var result = sshClient.RunCommand(startServiceCommand);
-                    Log( $"$ {startServiceCommand}\n{result.Result}");
-                    //TODO:检查服务启动情况
-                    if (result.Result.Contains("START_PENDING"))
+                await Task.Run(() => {
+                    using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                     {
-                        Log($"✅ 服务 {SelectedServer.ServiceName} 服务启动中");
+                        sshClient.Connect();
+                        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                        sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+                        // 启动服务
+                        var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
+                        var result = sshClient.RunCommand(startServiceCommand);
+                        Log($"$ {startServiceCommand}\n{result.Result}");
+                       
+                        WaitForServiceToStart(sshClient, SelectedServer.ServiceName);
+                        sshClient.Disconnect();
                     }
-                    else if (result.Result.Contains("1060"))
-                    {
-                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装");
-                    }
-                    else
-                    {
-                        Log($"⚠️ 无法启动服务 {SelectedServer.ServiceName}: {result.Result}");
-                    }
-
-                    sshClient.Disconnect();
-                }
-                BtnCheckService_Click(null, null);
+                });
+                
             }
             catch (Exception ex)
             {
@@ -720,7 +778,7 @@ namespace PublishTool
             }
         }
         //停止服务
-        private void BtnStopService_Click(object sender, RoutedEventArgs e)
+        private async void BtnStopService_Click(object sender, RoutedEventArgs e)
         {
             if (SelectedServer == null)
             {
@@ -730,35 +788,21 @@ namespace PublishTool
 
             try
             {
-                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
-                {
-                    sshClient.Connect();
-                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
-                    // 停止服务
-                    var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
-                    var result = sshClient.RunCommand(stopServiceCommand);
-                    Log( $"$ {stopServiceCommand}\n{result.Result}");
-                    //TODO:检查服务停止情况
-                    if (result.Result.Contains("STOP_PENDING"))
+                await Task.Run(() => {
+                    using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                     {
-                        Log($"✅ 服务 {SelectedServer.ServiceName} 已成功停止");
-                    }
-                    else if (result.Result.Contains("1062"))
-                    {
-                        Log($"⚠️ 服务{SelectedServer.ServiceName} 未启动!");
-                    }
-                    else if (result.Result.Contains("1060"))
-                    {
-                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装!");
-                    }
-                    else
-                    {
-                        Log($"⚠️ 无法停止服务 {SelectedServer.ServiceName}: {result.Result}");
-                    }
-
+                        sshClient.Connect();
+                        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                        sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+                        // 停止服务
+                        var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
+                        var result = sshClient.RunCommand(stopServiceCommand);
+                        Log($"$ {stopServiceCommand}\n{result.Result}");
+                        
+                        WaitForServiceToStop(sshClient, SelectedServer.ServiceName);
                         sshClient.Disconnect();
-                }
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -766,7 +810,7 @@ namespace PublishTool
             }
         }
         //移除服务
-        private void BtnRemoveService_Click(object sender, RoutedEventArgs e)
+        private async void BtnRemoveService_Click(object sender, RoutedEventArgs e)
         {
             if (SelectedServer == null)
             {
@@ -776,36 +820,38 @@ namespace PublishTool
 
             try
             {
-                using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
-                {
-                    sshClient.Connect();
-                    System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-                    sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
-                    // 停止服务
-                    var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
-                    var stopResult = sshClient.RunCommand(stopServiceCommand);
-                    Log( $"$ {stopServiceCommand}\n{stopResult.Result}");
-
-                    // 删除服务
-                    var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
-                    var deleteResult = sshClient.RunCommand(deleteServiceCommand);
-                    Log( $"$ {deleteServiceCommand}\n{deleteResult.Result}");
-
-                    if (deleteResult.Result.Contains("成功") || deleteResult.Result.Contains("SUCCESS") || deleteResult.Result.Contains("DeleteService"))
+                await Task.Run(() => {
+                    using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
                     {
-                        Log($"✅ 服务 {SelectedServer.ServiceName} 已成功移除!");
-                    }
-                    else if (deleteResult.Result.Contains("1060"))
-                    {
-                        Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装!");
-                    }
-                    else
-                    {
-                        Log($"⚠️ 无法移除服务 {SelectedServer.ServiceName}: {deleteResult.Result}");
-                    }
+                        sshClient.Connect();
+                        System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                        sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+                        // 停止服务
+                        var stopServiceCommand = $"sc stop {SelectedServer.ServiceName}";
+                        var stopResult = sshClient.RunCommand(stopServiceCommand);
+                        Log($"$ {stopServiceCommand}\n{stopResult.Result}");
 
-                    sshClient.Disconnect();
-                }
+                        // 删除服务
+                        var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";
+                        var deleteResult = sshClient.RunCommand(deleteServiceCommand);
+                        Log($"$ {deleteServiceCommand}\n{deleteResult.Result}");
+
+                        if (deleteResult.Result.Contains("成功") || deleteResult.Result.Contains("SUCCESS") || deleteResult.Result.Contains("DeleteService"))
+                        {
+                            Log($"✅ 服务 {SelectedServer.ServiceName} 已成功移除!");
+                        }
+                        else if (deleteResult.Result.Contains("1060"))
+                        {
+                            Log($"⚠️ 服务 {SelectedServer.ServiceName} 未安装!");
+                        }
+                        else
+                        {
+                            Log($"⚠️ 无法移除服务 {SelectedServer.ServiceName}: {deleteResult.Result}");
+                        }
+
+                        sshClient.Disconnect();
+                    }
+                });
             }
             catch (Exception ex)
             {
@@ -831,7 +877,7 @@ namespace PublishTool
                     // 获取所有服务并筛选以 "API_" 开头的服务
                     var listServicesCommand = "sc query state= all";
                     var result = sshClient.RunCommand(listServicesCommand);
-                    Log($"$ {listServicesCommand}\n{result.Result}");
+                    //Log($"$ {listServicesCommand}\n{result.Result}");
 
                     if (!string.IsNullOrWhiteSpace(result.Result))
                     {
