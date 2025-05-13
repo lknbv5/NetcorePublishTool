@@ -423,9 +423,10 @@ namespace PublishTool
                 if (serviceExists)
                 {
                     // 如果服务存在，重新启动服务
-                    var startServiceCommand = $"chcp 65001 & sc start {SelectedServer.ServiceName}";
+                    var startServiceCommand = $"sc start {SelectedServer.ServiceName}";
                     var startResult = sshClient.RunCommand(startServiceCommand);
                     _worker.ReportProgress(0, $"$ {startServiceCommand}\n{startResult.Result}");
+                    WaitForServiceToStart(sshClient, SelectedServer.ServiceName);
                 }
                 else
                 {
@@ -442,6 +443,7 @@ namespace PublishTool
                         var result = sshClient.RunCommand(cmd);
                         _worker.ReportProgress(0, $"$ {cmd}\n{result.Result}");
                     }
+                    WaitForServiceToStart(sshClient, SelectedServer.ServiceName);
                 }
 
                 sshClient.Disconnect();
