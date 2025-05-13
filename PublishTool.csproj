@@ -5,7 +5,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
-    <ApplicaionIcon>logo.ico</ApplicaionIcon>
+    <ApplicationIcon>logo.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,6 +13,10 @@
     <EmbeddedResource Remove="Test\**" />
     <None Remove="Test\**" />
     <Page Remove="Test\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="logo.ico" />
   </ItemGroup>
 
   <ItemGroup>
@@ -25,9 +29,9 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Content Include="logo.ico">
+    <Resource Include="logo.ico">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
+    </Resource>
   </ItemGroup>
 
   <ItemGroup>

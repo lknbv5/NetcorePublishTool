@@ -200,7 +200,10 @@ namespace PublishTool
             {
                 foreach (var file in dialog.FileNames)
                 {
-                    SelectedFiles.Add(new FilrOrDir() { Path = file ,Type="File"});
+                    if (!SelectedFiles.Any(o => o.Path == file&&o.Type=="File"))
+                    {
+                        SelectedFiles.Add(new FilrOrDir() { Path = file, Type = "File" });
+                    }
                 }
             }
         }
@@ -225,7 +228,10 @@ namespace PublishTool
             {
                 foreach (var folder in dialog.SelectedPaths)
                 {
-                    SelectedFiles.Add(new FilrOrDir { Path = folder, Type = "Dir" });
+                    if (!SelectedFiles.Any(o => o.Path == folder && o.Type == "Dir"))
+                    {
+                        SelectedFiles.Add(new FilrOrDir { Path = folder, Type = "Dir" });
+                    }
                 }
             }
         }
@@ -659,6 +665,14 @@ namespace PublishTool
             {
                 _worker.CancelAsync();
                 Log("⏹ 停止操作请求已发送");
+            }
+            using (var sshClient = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+            {
+                sshClient.Connect();
+                System.Text.Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
+                sshClient.ConnectionInfo.Encoding = Encoding.GetEncoding("GBK");
+                WaitForServiceToStart(sshClient, SelectedServer.ServiceName);
+                sshClient.Disconnect();
             }
         }
 
