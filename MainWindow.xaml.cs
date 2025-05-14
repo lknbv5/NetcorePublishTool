@@ -298,7 +298,6 @@ namespace PublishTool
             }
             catch (Exception ex)
             {
-            //    Dispatcher.Invoke(() => Log($"❌ 错误: {ex.Message}"));
                 e.Result = null;
                 throw;
             }
@@ -306,7 +305,7 @@ namespace PublishTool
 
         private void UploadDirectory(SftpClient client, string localPath, string remotePath)
         {
-            foreach (var file in Directory.GetFiles(localPath))
+            foreach (var file in Directory.GetFiles(localPath)) 
             {
                 UploadFile(client, file, remotePath);
             }
@@ -371,15 +370,15 @@ namespace PublishTool
 
                 if (serviceExists)
                 {
-                    // 获取服务的运行路径
-                    var currentExePath = GetServiceExecutablePath(SelectedServer.ServiceName, sshClient);
-                    if (currentExePath != null)
+                    // 获取服务上已有服务的运行路径
+                    var oldExePath = GetServiceExecutablePath(SelectedServer.ServiceName, sshClient);
+                    if (oldExePath != null)
                     {
-                        var expectedExePath = Path.Combine(SelectedServer.RemotePath, SelectedServer.ExeName).Replace("\\", "/");
-                        if (!string.Equals(currentExePath.Replace("\\", "/"), expectedExePath, StringComparison.OrdinalIgnoreCase))
+                        var nowExePath = Path.Combine(SelectedServer.RemotePath, SelectedServer.ExeName).Replace("\\", "/");
+                        if (!string.Equals(oldExePath.Replace("\\", "/"), nowExePath, StringComparison.OrdinalIgnoreCase))
                         {
                             // 如果路径不一致，提示用户是否删除服务
-                            var message = $"服务 {SelectedServer.ServiceName} 的运行路径与本地配置不一致。\n当前路径: {currentExePath}\n预期路径: {expectedExePath}\n是否删除并重新安装服务？";
+                            var message = $"服务器已有服务 {SelectedServer.ServiceName} 的运行路径与本地配置不一致。\n服务器当前运行路径: {oldExePath}\n本次配置运行路径: {nowExePath}\n是否删除服务器原有服务并重新安装新服务？";
                             var caption = "警告";
                             var button = MessageBoxButton.YesNo;
                             var icon = MessageBoxImage.Warning;
@@ -391,6 +390,10 @@ namespace PublishTool
                                 _worker.ReportProgress(0, $"$ {deleteServiceCommand}\n{deleteResult.Result}");
                                 serviceExists = false; // 标记服务已被删除
                             }
+                            else
+                            {
+                                throw new Exception("⚠️ 服务部署终止!请重新确认配置!");
+                            }
                         }
                     }
 
@@ -401,27 +404,27 @@ namespace PublishTool
                     var rrr = WaitForServiceToStop(sshClient, SelectedServer.ServiceName);
                     if (!rrr)//没有成功停止服务
                     {
-                        throw new Exception("服务停止失败!");
+                        throw new Exception("⚠️ 服务停止失败!无法继续部署!");
                     }
                 }
 
                 // 上传文件
-                if (IsFullCheck)
+                if (IsFullCheck)//全量
                 {
                     UploadDirectory(client, SelectedServer.LocalPath, SelectedServer.RemotePath);
                 }
-                else
+                else//部分上传
                 {
-                    foreach (var path in SelectedFiles)
+                    foreach (var fileOrDir in SelectedFiles)
                     {
                         //UploadFile(client, file,SelectedServer.RemotePath);
-                        if (path.Type == "File") // 如果是文件
+                        if (fileOrDir.Type == "File") // 如果是文件
                         {
-                            UploadFile(client, path.Path, SelectedServer.RemotePath);
+                            UploadFile(client, fileOrDir.Path, SelectedServer.RemotePath);
                         }
                         else // 如果是文件夹
                         {
-                            UploadDirectory(client, path.Path, Path.Combine(SelectedServer.RemotePath, Path.GetFileName(path.Path)));
+                            UploadDirectory(client, fileOrDir.Path, Path.Combine(SelectedServer.RemotePath, Path.GetFileName(fileOrDir.Path)));
                         }
                     }
                 }

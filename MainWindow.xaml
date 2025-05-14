@@ -166,7 +166,7 @@
         <!-- 日志区域 -->
         <GroupBox Header="操作日志" Grid.Column="1"  Grid.RowSpan="4"   hc:TitleElement.TitlePlacement="Top" Margin="5 0 0 0">
             <TextBox x:Name="txtLog" IsReadOnly="True" Margin="2"
-                   VerticalScrollBarVisibility="Auto"
+                   VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                    FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Top"/>
         </GroupBox>
 
