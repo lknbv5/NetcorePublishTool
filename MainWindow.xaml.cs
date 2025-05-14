@@ -264,7 +264,7 @@ namespace PublishTool
                 var caption = "警告";
                 var button = MessageBoxButton.YesNo;
                 var icon = MessageBoxImage.Warning;
-                var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                var result = HandyControl.Controls.MessageBox.Show(message, caption, button, icon);
                 if (result == MessageBoxResult.No)
                 {
                     return;
@@ -382,7 +382,7 @@ namespace PublishTool
                             var caption = "警告";
                             var button = MessageBoxButton.YesNo;
                             var icon = MessageBoxImage.Warning;
-                            var result = System.Windows.MessageBox.Show(message, caption, button, icon);
+                            var result = HandyControl.Controls.MessageBox.Show(message, caption, button, icon);
                             if (result == MessageBoxResult.Yes)
                             {
                                 var deleteServiceCommand = $"sc delete {SelectedServer.ServiceName}";

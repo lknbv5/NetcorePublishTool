@@ -6,6 +6,11 @@
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
     <ApplicationIcon>logo.ico</ApplicationIcon>
+    <Company>LKNBV5.cn</Company>
+    <Authors>Chris·Leo</Authors>
+    <Copyright>软件版权归Chris·Leo所有</Copyright>
+    <Product>CoreApi发版工具</Product>
+    <Description>CoreApi发版工具</Description>
   </PropertyGroup>
 
   <ItemGroup>
