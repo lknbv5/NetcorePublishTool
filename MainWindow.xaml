@@ -8,191 +8,297 @@
         mc:Ignorable="d"
         Icon="logo.ico"
         Title=".Net Core WebApi发版工具" Height="800" Width="1290" ResizeMode="CanMinimize">
-    <Grid Margin="5">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
-            <RowDefinition Height="auto"/>
-        </Grid.RowDefinitions>
-
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="850"/>
-            <ColumnDefinition Width="410"/>
-        </Grid.ColumnDefinitions>
-        
-        <!-- 配置选择区域 -->
-        <GroupBox Header="配置选择" Grid.Row="0" hc:TitleElement.TitlePlacement="Left">
-            <Grid>
+    <Window.Resources>
+        <local:DirTypeConverter x:Key="DirTypeConverter"/>
+        <local:FileSizeConverter x:Key="FileSizeConverter"/>
+    </Window.Resources>
+    <TabControl Style="{StaticResource TabControlSliding}">
+        <!-- 原MainWindow内容 -->
+        <TabItem Header="发版功能" Width="200">
+            <Grid Margin="5">
                 <Grid.RowDefinitions>
-                    <RowDefinition></RowDefinition>
-                    <RowDefinition></RowDefinition>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="auto"/>
                 </Grid.RowDefinitions>
-                <StackPanel  Orientation="Horizontal" Height="30" Margin="5">
-                    <TextBlock VerticalAlignment="Center">配置文件：</TextBlock>
-                    <TextBox  Width="500" x:Name="txtConfigPath"   Tag="配置文件目录" Text="{Binding ConfigPath, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-                    <Button  Content="浏览" Width="50" Margin="3 0 0 0" Click="BtnConfigBrowseLocal_Click" />
-                    <Button Content="保存配置" Width="70" Margin="3 0 0 0" Click="BtnSaveConfig_Click"/>
-                    <Button Content="加载配置" Width="70" Margin="3 0 0 0" Click="BtnLoadConfig_Click"/>
-                </StackPanel>
-                <StackPanel Grid.Row="1" Orientation="Horizontal" Height="30" Margin="5">
-                    <TextBlock VerticalAlignment="Center">选择配置：</TextBlock>
-                    <ComboBox x:Name="cmbServers"  
+
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="850"/>
+                    <ColumnDefinition Width="410"/>
+                </Grid.ColumnDefinitions>
+
+                <!-- 配置选择区域 -->
+                <GroupBox Header="配置选择" Grid.Row="0" hc:TitleElement.TitlePlacement="Left">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition></RowDefinition>
+                            <RowDefinition></RowDefinition>
+                        </Grid.RowDefinitions>
+                        <StackPanel  Orientation="Horizontal" Height="30" Margin="5">
+                            <TextBlock VerticalAlignment="Center">配置文件：</TextBlock>
+                            <TextBox  Width="500" x:Name="txtConfigPath"   Tag="配置文件目录" Text="{Binding ConfigPath, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
+                            <Button  Content="浏览" Width="50" Margin="3 0 0 0" Click="BtnConfigBrowseLocal_Click" />
+                            <Button Content="保存配置" Width="70" Margin="3 0 0 0" Click="BtnSaveConfig_Click"/>
+                            <Button Content="加载配置" Width="70" Margin="3 0 0 0" Click="BtnLoadConfig_Click"/>
+                        </StackPanel>
+                        <StackPanel Grid.Row="1" Orientation="Horizontal" Height="30" Margin="5">
+                            <TextBlock VerticalAlignment="Center">选择配置：</TextBlock>
+                            <ComboBox x:Name="cmbServers"  
                         Width="500" 
                         ItemsSource="{Binding Servers}"
                         SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
                         DisplayMemberPath="Name"
                         SelectionChanged="CmbServers_SelectionChanged"/>
-                    <Button Content="添加" Width="50" Margin="3 0 0 0"  Click="BtnAddServer_Click" ToolTip="将当前配置添加到配置列表中"/>
-                    <Button Content="移除" Width="50" Margin="3 0 0 0"  Click="BtnRemoveServer_Click" ToolTip="移除当前选中的配置"/>
-                </StackPanel>
-            </Grid>
-        </GroupBox>
+                            <Button Content="添加" Width="50" Margin="3 0 0 0"  Click="BtnAddServer_Click" ToolTip="将当前配置添加到配置列表中"/>
+                            <Button Content="移除" Width="50" Margin="3 0 0 0"  Click="BtnRemoveServer_Click" ToolTip="移除当前选中的配置"/>
+                        </StackPanel>
+                    </Grid>
+                </GroupBox>
 
-        <!-- 部署参数区域 -->
-        <GroupBox Header="配置参数" Grid.Row="1"  hc:TitleElement.TitlePlacement="Left"  Margin="0 5" Padding="10 0 0 0">
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
+                <!-- 部署参数区域 -->
+                <GroupBox Header="配置参数" Grid.Row="1"  hc:TitleElement.TitlePlacement="Left"  Margin="0 5" Padding="10 0 0 0">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
 
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="Auto"/>
-                </Grid.RowDefinitions>
-                <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2" >
-                    <StackPanel    Orientation="Horizontal" VerticalAlignment="Bottom" >
-                        <TextBlock VerticalAlignment="Center">配置名称:</TextBlock>
-                        <TextBox x:Name="txtName" VerticalAlignment="Center" Width="200" Margin="5" Tag="配置名称" Text="{Binding SelectedServer.Name, Mode=TwoWay}"/>
-                    </StackPanel>
-                    <StackPanel  Orientation="Horizontal" >
-                        <TextBlock VerticalAlignment="Center">服务器IP:</TextBlock>
-                        <TextBox x:Name="txtServerIP" Width="100" Margin="5"  Tag="服务器IP" Text="{Binding SelectedServer.ServerIP, Mode=TwoWay}"/>
-                    </StackPanel>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="Auto"/>
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2" >
+                            <StackPanel    Orientation="Horizontal" VerticalAlignment="Bottom" >
+                                <TextBlock VerticalAlignment="Center">配置名称:</TextBlock>
+                                <TextBox x:Name="txtName" VerticalAlignment="Center" Width="200" Margin="5" Tag="配置名称" Text="{Binding SelectedServer.Name, Mode=TwoWay}"/>
+                            </StackPanel>
+                            <StackPanel  Orientation="Horizontal" >
+                                <TextBlock VerticalAlignment="Center">服务器IP:</TextBlock>
+                                <TextBox x:Name="txtServerIP" Width="100" Margin="5"  Tag="服务器IP" Text="{Binding SelectedServer.ServerIP, Mode=TwoWay}"/>
+                            </StackPanel>
 
-                    <StackPanel   Orientation="Horizontal" >
-                        <TextBlock VerticalAlignment="Center">用户名:</TextBlock>
-                        <TextBox x:Name="txtUserName" Width="150" Margin="5" Tag="用户名" Text="{Binding SelectedServer.Username, Mode=TwoWay}"/>
-                    </StackPanel>
+                            <StackPanel   Orientation="Horizontal" >
+                                <TextBlock VerticalAlignment="Center">用户名:</TextBlock>
+                                <TextBox x:Name="txtUserName" Width="150" Margin="5" Tag="用户名" Text="{Binding SelectedServer.Username, Mode=TwoWay}"/>
+                            </StackPanel>
 
-                    <StackPanel  Orientation="Horizontal" >
-                        <TextBlock VerticalAlignment="Center">密码:</TextBlock>
-                        <PasswordBox x:Name="txtPassword"  Width="147" Margin="5" Tag="用户名" PasswordChanged="txtPassword_PasswordChanged"/>
-                    </StackPanel>
-                </StackPanel>
-                <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1">
-                    <DockPanel>
-                        <TextBlock  VerticalAlignment="Center">本地发布目录:</TextBlock>
-                        <TextBox  Width="645" x:Name="txtLocalPath"  Margin="5" Tag="本地发布目录" Text="{Binding SelectedServer.LocalPath, Mode=TwoWay,UpdateSourceTrigger=PropertyChanged}"/>
-                        <Button  Content="浏览" Width="62"  Click="BtnBrowseLocal_Click" />
-                    </DockPanel>
-                </StackPanel>
+                            <StackPanel  Orientation="Horizontal" >
+                                <TextBlock VerticalAlignment="Center">密码:</TextBlock>
+                                <PasswordBox x:Name="txtPassword"  Width="147" Margin="5" Tag="用户名" PasswordChanged="txtPassword_PasswordChanged"/>
+                            </StackPanel>
+                        </StackPanel>
+                        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1">
+                            <DockPanel>
+                                <TextBlock  VerticalAlignment="Center">本地发布目录:</TextBlock>
+                                <TextBox  Width="645" x:Name="txtLocalPath"  Margin="5" Tag="本地发布目录" Text="{Binding SelectedServer.LocalPath}"/>
+                                <Button  Content="浏览" Width="62"  Click="BtnBrowseLocal_Click" />
+                            </DockPanel>
+                        </StackPanel>
 
-                <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2">
-                    <DockPanel DockPanel.Dock="Left">
-                        <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务器部署路径:</TextBlock>
-                        <TextBox x:Name="txtRemotePath" Margin="0 0 5 0" Tag="服务器部署路径" Text="{Binding SelectedServer.RemotePath, Mode=TwoWay}"/>
-                    </DockPanel>
-                </StackPanel>
-                <DockPanel DockPanel.Dock="Left"  Grid.Column="0"  Grid.Row="3">
-                    <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务(WinService)名称:</TextBlock>
-                    <TextBox x:Name="txtServiceName" Margin="5" Tag="Windows服务名称" Text="{Binding SelectedServer.ServiceName, Mode=TwoWay}" IsEnabled="False"/>
-                </DockPanel>
-                <DockPanel DockPanel.Dock="Left" Grid.Column="1"  Grid.Row="3">
-                    <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">Exe名称(需带exe):</TextBlock>
-                    <TextBox x:Name="txtExeName" Margin="5" Tag="exe名称" Text="{Binding SelectedServer.ExeName, Mode=TwoWay}"/>
-                </DockPanel>
-            </Grid>
-        </GroupBox>
+                        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2">
+                            <DockPanel DockPanel.Dock="Left">
+                                <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务器部署路径:</TextBlock>
+                                <TextBox x:Name="txtRemotePath" Margin="0 0 5 0" Tag="服务器部署路径" Text="{Binding SelectedServer.RemotePath, Mode=TwoWay}"/>
+                            </DockPanel>
+                        </StackPanel>
+                        <DockPanel DockPanel.Dock="Left"  Grid.Column="0"  Grid.Row="3">
+                            <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务(WinService)名称:</TextBlock>
+                            <TextBox x:Name="txtServiceName" Margin="5" Tag="Windows服务名称" Text="{Binding SelectedServer.ServiceName, Mode=TwoWay}" IsEnabled="False"/>
+                        </DockPanel>
+                        <DockPanel DockPanel.Dock="Left" Grid.Column="1"  Grid.Row="3">
+                            <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">Exe名称(需带exe):</TextBlock>
+                            <TextBox x:Name="txtExeName" Margin="5" Tag="exe名称" Text="{Binding SelectedServer.ExeName, Mode=TwoWay}"/>
+                        </DockPanel>
+                    </Grid>
+                </GroupBox>
 
-        <!-- 文件传输区域 -->
-        <GroupBox Header="文件传输" Grid.Row="2" Grid.RowSpan="2" Padding="5" hc:TitleElement.TitlePlacement="Left">
-            <Grid>
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="*"/>
-                </Grid.RowDefinitions>
+                <!-- 文件传输区域 -->
+                <GroupBox Header="文件传输" Grid.Row="2" Grid.RowSpan="2" Padding="5" hc:TitleElement.TitlePlacement="Left">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="*"/>
+                        </Grid.RowDefinitions>
 
-                <StackPanel Orientation="Horizontal">
-                    <RadioButton x:Name="rbFull" Content="全量上传" 
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="rbFull" Content="全量上传" 
                                GroupName="UploadMode" Margin="5" IsChecked="{Binding IsFullCheck}"/>
-                    <RadioButton x:Name="rbPartial" Content="部分上传" 
+                            <RadioButton x:Name="rbPartial" Content="部分上传" 
                                GroupName="UploadMode" Margin="5"/>
-                    <Button Content=" 选择文件" Margin="5" Click="BtnSelectFiles_Click"
+                            <Button Content=" 选择文件" Margin="5" Click="BtnSelectFiles_Click"
                           IsEnabled="{Binding IsChecked, ElementName=rbPartial}"/>
-                    <Button Content=" 选择文件夹" Margin="5" Click="BtnSelectDirs_Click"
+                            <Button Content=" 选择文件夹" Margin="5" Click="BtnSelectDirs_Click"
       IsEnabled="{Binding IsChecked, ElementName=rbPartial}"/>
 
-                </StackPanel>
-                <TextBlock Text="(💡Tip：↓ 列表双击可移除单条)" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 70 0"></TextBlock>
-                <Button Content="↓ 清空"  Width="60" Margin="2" Click="BtnClearFileList_Click" VerticalAlignment="Center" HorizontalAlignment="Right" ></Button>
-                <ListBox x:Name="lstFiles" Grid.Row="1" Margin="2" Height="auto" IsEnabled="{Binding ElementName=rbPartial,Path=IsChecked}"
+                        </StackPanel>
+                        <TextBlock Text="(💡Tip：↓ 列表双击可移除单条)" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 70 0"></TextBlock>
+                        <Button Content="↓ 清空"  Width="60" Margin="2" Click="BtnClearFileList_Click" VerticalAlignment="Center" HorizontalAlignment="Right" ></Button>
+                        <ListBox x:Name="lstFiles" Grid.Row="1" Margin="2" Height="auto" IsEnabled="{Binding ElementName=rbPartial,Path=IsChecked}"
                        ItemsSource="{Binding SelectedFiles}" MouseDoubleClick="lstFiles_MouseDoubleClick">
-                    <ListBox.ItemTemplate>
-                        <DataTemplate>
-                            <StackPanel Orientation="Horizontal">
-                                <!--<Button Background="Transparent" Margin="5 0 0 0">X</Button>-->
-                                <Path x:Name="IconPath"
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal">
+                                        <!--<Button Background="Transparent" Margin="5 0 0 0">X</Button>-->
+                                        <Path x:Name="IconPath"
                                       Width="18" Height="18" Margin="2"
                                       VerticalAlignment="Center"
                                       HorizontalAlignment="Center">
-                                    <Path.Style>
-                                        <Style TargetType="Path">
-                                            <Setter Property="Data" Value="M6,2 L12,2 L16,6 L16,20 C16,21.1 15.1,22 14,22 L6,22 C4.9,22 4,21.1 4,20 L4,4 C4,2.9 4.9,2 6,2 Z M12,2 L12,7 L16,7"/>
-                                            <Setter Property="Fill" Value="LightSkyBlue"/>
-                                            <Style.Triggers>
-                                                <DataTrigger Binding="{Binding Type}" Value="Dir">
-                                                    <Setter Property="Data" Value="M3,7 L3,15 C3,16.1 3.9,17 5,17 L15,17 C16.1,17 17,16.1 17,15 L17,9 C17,7.9 16.1,7 15,7 L9,7 L7,5 L5,5 C3.9,5 3,5.9 3,7 Z"/>
-                                                    <Setter Property="Fill" Value="#DE9C00"/>
-                                                </DataTrigger>
-                                            </Style.Triggers>
-                                        </Style>
-                                    </Path.Style>
-                                </Path>
-                                <!--<TextBlock Text="[" VerticalAlignment="Center"></TextBlock>
+                                            <Path.Style>
+                                                <Style TargetType="Path">
+                                                    <Setter Property="Data" Value="M6,2 L12,2 L16,6 L16,20 C16,21.1 15.1,22 14,22 L6,22 C4.9,22 4,21.1 4,20 L4,4 C4,2.9 4.9,2 6,2 Z M12,2 L12,7 L16,7"/>
+                                                    <Setter Property="Fill" Value="LightSkyBlue"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Type}" Value="Dir">
+                                                            <Setter Property="Data" Value="M3,7 L3,15 C3,16.1 3.9,17 5,17 L15,17 C16.1,17 17,16.1 17,15 L17,9 C17,7.9 16.1,7 15,7 L9,7 L7,5 L5,5 C3.9,5 3,5.9 3,7 Z"/>
+                                                            <Setter Property="Fill" Value="#DE9C00"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </Path.Style>
+                                        </Path>
+                                        <!--<TextBlock Text="[" VerticalAlignment="Center"></TextBlock>
                                 <TextBlock Text="{Binding Type}" VerticalAlignment="Center"></TextBlock>
                                 <TextBlock Text="]" VerticalAlignment="Center"></TextBlock>-->
-                                <Label  Content="{Binding Path}" BorderThickness="0" Background="Transparent" VerticalAlignment="Center" />
-                            </StackPanel>
-                        </DataTemplate>
-                    </ListBox.ItemTemplate>
-                </ListBox>
-            </Grid>
-        </GroupBox>
-        <!-- 日志区域 -->
-        <GroupBox Header="操作日志" Grid.Column="1"  Grid.RowSpan="4"   hc:TitleElement.TitlePlacement="Top" Margin="5 0 0 0">
-            <TextBox x:Name="txtLog" IsReadOnly="True" Margin="2"
+                                        <Label  Content="{Binding Path}" BorderThickness="0" Background="Transparent" VerticalAlignment="Center" />
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </GroupBox>
+                <!-- 日志区域 -->
+                <GroupBox Header="操作日志" Grid.Column="1"  Grid.RowSpan="4"   hc:TitleElement.TitlePlacement="Top" Margin="5 0 0 0">
+                    <TextBox x:Name="txtLog" IsReadOnly="True" Margin="2"
                    VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                    FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Top"/>
-        </GroupBox>
+                </GroupBox>
 
-        <!-- 进度条和操作按钮 -->
-        <StackPanel  Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
+                <!-- 进度条和操作按钮 -->
+                <StackPanel  Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
                   HorizontalAlignment="Left">
-            <Button Content="查看服务列表" Width="100"  x:Name="BtnCheckServiceList"
+                    <Button Content="查看服务列表" Width="100"  x:Name="BtnCheckServiceList"
                   Click="BtnCheckServiceList_Click" Background="MediumSlateBlue" Foreground="White"/>
-            <Button Content="查看服务状态" Width="100" Margin="5" x:Name="BtnCheckService"
+                    <Button Content="查看服务状态" Width="100" Margin="5" x:Name="BtnCheckService"
        Click="BtnCheckService_Click"   Background="MediumSlateBlue" Foreground="White"/>
-            <Button Content="开启服务" Width="80" Margin="5" x:Name="BtnStartService"
+                    <Button Content="开启服务" Width="80" Margin="5" x:Name="BtnStartService"
        Click="BtnStartService_Click"  Background="LightSeaGreen" Foreground="White"/>
-            <Button Content="停止服务" Width="80" Margin="5" x:Name="BtnStopService"
+                    <Button Content="停止服务" Width="80" Margin="5" x:Name="BtnStopService"
        Click="BtnStopService_Click"  Background="DarkOrange" Foreground="White"/>
-            <Button Content="移除服务" Width="80" Margin="5" x:Name="BtnRemoveService"
+                    <Button Content="移除服务" Width="80" Margin="5" x:Name="BtnRemoveService"
        Click="BtnRemoveService_Click"  Background="OrangeRed" Foreground="White"/>
-            
-        </StackPanel>
-        <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
+
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
                   HorizontalAlignment="Right">
-            <ProgressBar x:Name="progressBar" Width="180" Height="20" IsIndeterminate="False" Visibility="Hidden"/>
-            <Button Content="开始部署" FontWeight="Black" Width="90"  x:Name="BtnDeploy"
+                    <ProgressBar x:Name="progressBar" Width="180" Height="20" IsIndeterminate="False" Visibility="Hidden"/>
+                    <Button Content="开始部署" FontWeight="Black" Width="90"  x:Name="BtnDeploy"
 Click="BtnDeploy_Click" Style="{DynamicResource ButtonSuccess}"/>
-            <Button Content="停止部署" Width="80" Margin="5" x:Name="BtnStop"
+                    <Button Content="停止部署" Width="80" Margin="5" x:Name="BtnStop"
 Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/>
-        </StackPanel>
-        <Button Content="清空日志" Width="80" HorizontalAlignment="Right" Grid.Column="1"  Grid.Row="4" Click="DelLog_Click" Style="{DynamicResource ButtonWarning}"/>
-    </Grid>
+                </StackPanel>
+                <Button Content="清空日志" Width="80" HorizontalAlignment="Right" Grid.Column="1"  Grid.Row="4" Click="DelLog_Click" Style="{DynamicResource ButtonWarning}" />
+            </Grid>
+        </TabItem>
+        <!-- SFTP管理 -->
+        <TabItem Header="SFTP文件管理"  Width="200">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="410" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <!-- 顶部：选择配置 -->
+                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" Margin="5,5,5,0">
+                    <TextBlock VerticalAlignment="Center">选择配置：</TextBlock>
+                    <ComboBox x:Name="cmbServers1"
+                  Width="400"
+                  ItemsSource="{Binding Servers}"
+                  SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
+                  DisplayMemberPath="Name"
+                  SelectionChanged="CmbServers_SelectionChanged"/>
+                </StackPanel>
+
+                <!-- 顶部右侧：操作日志 -->
+                <GroupBox Header="操作日志" Grid.Row="0" Grid.Column="1" Grid.RowSpan="4" Margin="5 5 0 0">
+                    <Grid>
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <TextBox x:Name="txtSftpLog" IsReadOnly="True" Margin="2"
+                     VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
+                     FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Top"/>
+                        <Button Content="清空日志" Grid.Row="1" HorizontalAlignment="Right" Margin="0,5,0,0" Style="{DynamicResource ButtonWarning}"
+                    Click="DelSftpLog_Click" Width="80"/>
+                    </Grid>
+                </GroupBox>
+
+                <!-- 路径和操作按钮 -->
+                <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0" Margin="5,5,5,5">
+                    <Button Content="返回上级" Click="BtnUp_Click" Margin="0,0,10,0"/>
+                    <TextBox Name="txtPath" Width="650" Margin="0,0,10,0" Text="{Binding CurrentPath, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                    <Button Content="跳转" Click="BtnGo_Click"/>
+                    <Button Content="刷新" Click="BtnRefresh_Click" Margin="5,0,0,0"/>
+                </StackPanel>
+
+                <!-- 文件列表 -->
+                <ListView Name="lvFiles" Grid.Row="2" Grid.Column="0" MouseDoubleClick="lvFiles_MouseDoubleClick"
+              ItemsSource="{Binding SftpDirAndFiles}" SelectedItem="{Binding SelectedDirAndFiles}" SelectionMode="Extended">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="名称" Width="550">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <StackPanel Orientation="Horizontal">
+                                            <Path Width="18" Height="18" Margin="0,0,6,0"
+                                      Fill="{Binding IsDirectory, Converter={StaticResource DirTypeConverter}, ConverterParameter=Brush}"
+                                      Data="{Binding IsDirectory, Converter={StaticResource DirTypeConverter}, ConverterParameter=Geometry}"/>
+                                            <TextBlock Text="{Binding Name}"/>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                            <GridViewColumn Header="修改时间" Width="150" DisplayMemberBinding="{Binding LastWriteTime, StringFormat=yyyy-MM-dd HH:mm}"/>
+                            <GridViewColumn Header="文件大小" Width="100">
+                                <GridViewColumn.CellTemplate>
+                                    <DataTemplate>
+                                        <TextBlock Text="{Binding Size, Converter={StaticResource FileSizeConverter}}"/>
+                                    </DataTemplate>
+                                </GridViewColumn.CellTemplate>
+                            </GridViewColumn>
+                        </GridView>
+                    </ListView.View>
+                    <ListView.ContextMenu>
+                        <ContextMenu>
+                            <MenuItem Header="新建文件夹" Click="MenuCreateDir_Click"/>
+                            <MenuItem Header="重命名" Click="MenuRename_Click"/>
+                            <MenuItem Header="删除" Click="MenuDelete_Click"/>
+                            <MenuItem Header="上传文件" Click="MenuUploadFile_Click"/>
+                            <MenuItem Header="下载文件(夹)" Click="MenuDownloadFile_Click"/>
+                            <MenuItem Header="上传文件夹" Click="MenuUploadDir_Click"/>
+                            <MenuItem Header="刷新" Click="MenuRefresh_Click"/>
+                        </ContextMenu>
+                    </ListView.ContextMenu>
+                </ListView>
+
+                <!-- 进度条 -->
+                <StackPanel Grid.Row="3" Grid.Column="0" Height="20" Orientation="Horizontal" Margin="0 5 0 5">
+                    <TextBlock Text="进度：" Margin="5,2,0,0"/>
+                    <ProgressBar x:Name="sftpProgressBar"
+                     Minimum="0" Maximum="100" Value="0" Width="820"/>
+                </StackPanel>
+            </Grid>
+        </TabItem>
+    </TabControl>
+    
 </Window>

@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using System.Windows.Input;
 using Ude;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 
@@ -57,6 +58,7 @@ namespace PublishTool
             {
                 _selectedServer = value;
                 OnPropertyChanged(nameof(SelectedServer));
+                ConnectAndLoad();
             }
         }
         private string _configPath;
@@ -137,6 +139,8 @@ namespace PublishTool
             {
                 SelectedServer=Servers[0];
             }
+
+            //ConnectAndLoad();
         }
         // 进度更新处理函数
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
@@ -312,7 +316,7 @@ namespace PublishTool
 
             foreach (var dir in Directory.GetDirectories(localPath))
             {
-                var newRemotePath = Path.Combine(remotePath, Path.GetFileName(dir));
+                var newRemotePath = System.IO.Path.Combine(remotePath, System.IO.Path.GetFileName(dir));
                 //判断远程目录是否存在，不存在则创建
                 if (!client.Exists("/" + ConvertToLinuxPath(newRemotePath)))
                 {
@@ -592,17 +596,17 @@ namespace PublishTool
 
         private void CmbServers_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            if (cmbServers.SelectedItem is ServerConfig selectedServer)
-            {
-                txtName.Text = selectedServer.Name;
-                txtServerIP.Text = selectedServer.ServerIP;
-                txtUserName.Text = selectedServer.Username;
-                txtPassword.Password = selectedServer.Password;
-                txtExeName.Text = selectedServer.ExeName;
-                txtServiceName.Text = selectedServer.ServiceName;
-                txtLocalPath.Text = selectedServer.LocalPath;
-                txtRemotePath.Text = selectedServer.RemotePath;
-            }
+            //if (cmbServers.SelectedItem is ServerConfig selectedServer)
+            //{
+            //    txtName.Text = selectedServer.Name;
+            //    txtServerIP.Text = selectedServer.ServerIP;
+            //    txtUserName.Text = selectedServer.Username;
+            //    txtPassword.Password = selectedServer.Password;
+            //    txtExeName.Text = selectedServer.ExeName;
+            //    txtServiceName.Text = selectedServer.ServiceName;
+            //    txtLocalPath.Text = selectedServer.LocalPath;
+            //    txtRemotePath.Text = selectedServer.RemotePath;
+            //}
         }
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e)
@@ -950,6 +954,473 @@ namespace PublishTool
         private void BtnClearFileList_Click(object sender, RoutedEventArgs e)
         {
             SelectedFiles.Clear();
+        }
+        //打开远程文件窗口
+        private void RemoteFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null)
+            {
+                Log("⚠️ 请先选择一个服务器配置!");
+                return;
+            }
+            var win = new SftpWindow(SelectedServer);
+            win.Owner = this;
+            win.ShowDialog();
+        }
+
+        private ObservableCollection<FileItem> _sftpDirAndFiles = new ObservableCollection<FileItem>();
+        public ObservableCollection<FileItem> SftpDirAndFiles
+        {
+            get => _sftpDirAndFiles;
+            set
+            {
+                _sftpDirAndFiles = value;
+                OnPropertyChanged(nameof(SftpDirAndFiles));
+            }
+        }
+
+        private FileItem _selectedDirAndFiles;
+        public FileItem SelectedDirAndFiles
+        {
+            get => _selectedDirAndFiles;
+            set
+            {
+                _selectedDirAndFiles = value;
+                OnPropertyChanged(nameof(SelectedDirAndFiles));
+            }
+        }
+
+        private string _currentPath = "/";
+        public string CurrentPath
+        {
+            get => _currentPath;
+            set
+            {
+                _currentPath = value;
+                OnPropertyChanged(nameof(CurrentPath));
+            }
+        }
+
+        private void LoadFiles(string path)
+        {
+            path = ConvertToLinuxPath(path);
+            CurrentPath = path;
+            var items = new List<FileItem>();
+            foreach (var entry in _sftpClient.ListDirectory(path))
+            {
+                if (entry.Name == "." || entry.Name == "..") continue;
+                items.Add(new FileItem
+                {
+                    Name = entry.Name,
+                    FullPath = entry.FullName,
+                    IsDirectory = entry.IsDirectory,
+                    LastWriteTime = entry.LastWriteTime,
+                    Size = entry.IsDirectory ? 0 : entry.Length
+                });
+            }
+            SftpDirAndFiles =new ObservableCollection<FileItem>( items.OrderByDescending(i => i.IsDirectory).ThenBy(i => i.Name));
+        }
+
+
+        private void BtnUp_Click(object sender, RoutedEventArgs e)
+        {
+            if (CurrentPath == "/") return;
+            var parent = System.IO.Path.GetDirectoryName(CurrentPath.TrimEnd('/'));
+            if (string.IsNullOrEmpty(parent)) parent = "/";
+            CurrentPath = ConvertToLinuxPath(parent);
+            LoadFiles(parent);
+        }
+
+        private void BtnGo_Click(object sender, RoutedEventArgs e)
+        {
+            if (_sftpClient.Exists(CurrentPath))
+                LoadFiles(CurrentPath);
+        }
+
+        private void SftpLog(string message)
+        {
+            Dispatcher.Invoke(() =>
+            {
+                txtSftpLog.AppendText($"[{DateTime.Now:HH:mm:ss}] {message}\n");
+                txtSftpLog.ScrollToEnd();
+            });
+        }
+
+        private void DelSftpLog_Click(object sender, RoutedEventArgs e)
+        {
+            txtSftpLog.Clear();
+        }
+
+        // 右键菜单：新建文件夹
+        private void MenuCreateDir_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("请输入新文件夹名称：", "");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrWhiteSpace(dlg.InputText))
+            {
+                var newDir = CurrentPath.TrimEnd('/') + "/" + dlg.InputText;
+                try
+                {
+                    _sftpClient.CreateDirectory(newDir);
+                    SftpLog($"📁 新建文件夹: {newDir}");
+                    LoadFiles(CurrentPath);
+                }
+                catch (Exception ex)
+                {
+                    SftpLog($"❌ 新建文件夹失败: {ex.Message}");
+                }
+            }
+        }
+
+        // 右键菜单：重命名
+        private void MenuRename_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new InputDialog("请输入新名称：", SelectedDirAndFiles.Name);
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrWhiteSpace(dlg.InputText))
+            {
+                var newPath = CurrentPath.TrimEnd('/') + "/" + dlg.InputText;
+                try
+                {
+                    _sftpClient.RenameFile(SelectedDirAndFiles.FullPath, newPath);
+                    SftpLog($"✏️ 重命名: {SelectedDirAndFiles.FullPath} → {newPath}");
+                    LoadFiles(CurrentPath);
+                }
+                catch (Exception ex)
+                {
+                    SftpLog($"❌ 重命名失败: {ex.Message}");
+                }
+            }
+        }
+
+        // 右键菜单：删除
+        private async void MenuDelete_Click(object sender, RoutedEventArgs e)
+        {
+            var selectedItems = lvFiles.SelectedItems.Cast<FileItem>().ToList();
+            if (selectedItems.Count == 0)
+            {
+                SftpLog("⚠️ 请先选择要删除的文件或文件夹！");
+                return;
+            }
+
+            if (HandyControl.Controls.MessageBox.Show(
+                $"确定要删除选中的 {selectedItems.Count} 个文件/文件夹吗？",
+                "确认", MessageBoxButton.YesNo, icon: MessageBoxImage.Question) != MessageBoxResult.Yes)
+            {
+                return;
+            }
+
+            sftpProgressBar.Visibility = Visibility.Visible;
+            sftpProgressBar.Value = 0;
+            sftpProgressBar.Maximum = 100;
+
+            int total = selectedItems.Count;
+            await Task.Run(() =>
+            {
+                for (int i = 0; i < total; i++)
+                {
+                    var item = selectedItems[i];
+                    try
+                    {
+                        if (item.IsDirectory)
+                            DeleteDirectoryRecursive(_sftpClient, item.FullPath);
+                        else
+                            _sftpClient.DeleteFile(item.FullPath);
+
+                        Dispatcher.Invoke(() =>
+                        {
+                            int percent = (int)((i + 1) * 100.0 / total);
+                            sftpProgressBar.Value = percent;
+                            SftpLog($"🗑️ 已删除: {item.Name}");
+                        });
+                    }
+                    catch (Exception ex)
+                    {
+                        Dispatcher.Invoke(() =>
+                        {
+                            SftpLog($"❌ 删除失败: {item.Name} - {ex.Message}");
+                        });
+                    }
+                }
+            });
+
+            await Task.Delay(300);
+            sftpProgressBar.Visibility = Visibility.Collapsed;
+            LoadFiles(CurrentPath);
+        }
+        private void DeleteDirectoryRecursive(SftpClient client, string remoteDir)
+        {
+            foreach (var entry in client.ListDirectory(remoteDir))
+            {
+                if (entry.Name == "." || entry.Name == "..") continue;
+                if (entry.IsDirectory)
+                {
+                    DeleteDirectoryRecursive(client, entry.FullName);
+                }
+                else
+                {
+                    client.DeleteFile(entry.FullName);
+                }
+            }
+            client.DeleteDirectory(remoteDir);
+        }
+        // 右键菜单：上传文件
+        private async void MenuUploadFile_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new Microsoft.Win32.OpenFileDialog
+            {
+                Multiselect = true
+            };
+            if (dlg.ShowDialog() == true)
+            {
+                int total = dlg.FileNames.Length;
+                if (total == 0) return;
+
+                sftpProgressBar.Visibility = Visibility.Visible;
+                sftpProgressBar.Value = 0;
+                sftpProgressBar.Maximum = 100;
+
+                await Task.Run(() =>
+                {
+                    for (int i = 0; i < total; i++)
+                    {
+                        var filePath = dlg.FileNames[i];
+                        var fileName = System.IO.Path.GetFileName(filePath);
+                        using (var fs = new FileStream(filePath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                        {
+                            _sftpClient.UploadFile(fs, CurrentPath.TrimEnd('/') + "/" + fileName, true);
+                        }
+                        // 进度更新需在UI线程
+                        Dispatcher.Invoke(() =>
+                        {
+                            int percent = (int)((i + 1) * 100.0 / total);
+                            sftpProgressBar.Value = percent;
+                            SftpLog($"⬆️ 已上传: {fileName}");
+                        });
+                    }
+                });
+
+                await Task.Delay(300);
+                sftpProgressBar.Visibility = Visibility.Collapsed;
+                LoadFiles(CurrentPath);
+            }
+        }
+
+        // 右键菜单：下载文件
+        private async void MenuDownloadFile_Click(object sender, RoutedEventArgs e)
+        {
+            if (!SelectedDirAndFiles.IsDirectory)
+            {
+                var dlg = new Microsoft.Win32.SaveFileDialog { FileName = SelectedDirAndFiles.Name };
+                if (dlg.ShowDialog() == true)
+                {
+                    sftpProgressBar.Visibility = Visibility.Visible;
+                    sftpProgressBar.Value = 0;
+                    sftpProgressBar.Maximum = 100;
+
+                    await Task.Run(() =>
+                    {
+                        using (var fs = new FileStream(dlg.FileName, FileMode.Create, FileAccess.Write))
+                        {
+                            _sftpClient.DownloadFile(SelectedDirAndFiles.FullPath, fs);
+                        }
+                    });
+
+                    sftpProgressBar.Value = 100;
+                    await Task.Delay(300);
+                    sftpProgressBar.Visibility = Visibility.Collapsed;
+                    SftpLog($"✅ 文件已下载到: {dlg.FileName}");
+                }
+            }
+            else
+            {
+                var folderDlg = new System.Windows.Forms.FolderBrowserDialog
+                {
+                    Description = "请选择本地保存文件夹"
+                };
+                if (folderDlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+                {
+                    string localRoot = System.IO.Path.Combine(folderDlg.SelectedPath, SelectedDirAndFiles.Name);
+
+                    int totalFiles = CountFiles(_sftpClient, SelectedDirAndFiles.FullPath);
+                    if (totalFiles == 0)
+                    {
+                        SftpLog("⚠️ 文件夹为空，无需下载。");
+                        return;
+                    }
+
+                    sftpProgressBar.Visibility = Visibility.Visible;
+                    sftpProgressBar.Value = 0;
+                    sftpProgressBar.Maximum = 100;
+                    int current = 0;
+
+                    var progress = new Progress<int>(v =>
+                    {
+                        int percent = (int)((double)v / totalFiles * 100);
+                        sftpProgressBar.Value = percent;
+                    });
+
+                    await Task.Run(() =>
+                    {
+                        DownloadDirectoryAsync(_sftpClient, SelectedDirAndFiles.FullPath, localRoot, ref current, totalFiles, progress);
+                    });
+
+                    sftpProgressBar.Value = 100;
+                    await Task.Delay(300);
+                    sftpProgressBar.Visibility = Visibility.Collapsed;
+                    SftpLog($"✅ 文件夹已下载到: {localRoot}");
+                }
+            }
+        }
+
+        private int CountFiles(SftpClient client, string remotePath)
+        {
+            int count = 0;
+            foreach (var entry in client.ListDirectory(remotePath))
+            {
+                if (entry.Name == "." || entry.Name == "..") continue;
+                if (entry.IsDirectory)
+                    count += CountFiles(client, entry.FullName);
+                else
+                    count++;
+            }
+            return count;
+        }
+
+        private void DownloadDirectoryAsync(SftpClient client, string remotePath, string localPath, ref int current, int total, IProgress<int> progress)
+        {
+            if (!Directory.Exists(localPath))
+                Directory.CreateDirectory(localPath);
+
+            foreach (var entry in client.ListDirectory(remotePath))
+            {
+                if (entry.Name == "." || entry.Name == "..") continue;
+                string localFilePath = System.IO.Path.Combine(localPath, entry.Name);
+                if (entry.IsDirectory)
+                {
+                    DownloadDirectoryAsync(client, entry.FullName, localFilePath, ref current, total, progress);
+                }
+                else
+                {
+                    using (var fs = new FileStream(localFilePath, FileMode.Create, FileAccess.Write))
+                    {
+                        client.DownloadFile(entry.FullName, fs);
+                    }
+                    current++;
+                    progress.Report(current);
+                }
+            }
+        }
+        private void ConnectAndLoad()
+        {
+            try
+            {
+                CurrentPath = "/";
+                if (_sftpClient == null)
+                {
+                    _sftpClient = new SftpClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password);
+                    _sftpClient.Connect();
+                }
+                LoadFiles(CurrentPath);
+            }
+            catch (Exception ex)
+            {
+                HandyControl.Controls.MessageBox.Show("连接SFTP失败: " + ex.Message);
+                Close();
+            }
+        }
+
+        private void lvFiles_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            LoadFiles(SelectedDirAndFiles.FullPath);
+        }
+        //递归统计文件数
+        private int CountLocalFiles(string folder)
+        {
+            int count = 0;
+            foreach (var file in Directory.GetFiles(folder))
+                count++;
+            foreach (var dir in Directory.GetDirectories(folder))
+                count += CountLocalFiles(dir);
+            return count;
+        }
+        private async void MenuUploadDir_Click(object sender, RoutedEventArgs e)
+        {
+            var dlg = new System.Windows.Forms.FolderBrowserDialog
+            {
+                Description = "请选择要上传的文件夹"
+            };
+            if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
+            {
+                string localFolder = dlg.SelectedPath;
+                string remoteFolder = CurrentPath.TrimEnd('/') + "/" + Path.GetFileName(localFolder);
+
+                // 统计总文件数
+                int totalFiles = CountLocalFiles(localFolder);
+                if (totalFiles == 0)
+                {
+                    SftpLog("⚠️ 文件夹为空，无需上传。");
+                    return;
+                }
+
+                sftpProgressBar.Visibility = Visibility.Visible;
+                sftpProgressBar.Value = 0;
+                sftpProgressBar.Maximum = 100;
+                int current = 0;
+
+                await Task.Run(() =>
+                {
+                    UploadDirectoryWithProgress(_sftpClient, localFolder, remoteFolder, current, totalFiles);
+                });
+
+                sftpProgressBar.Value = 100;
+                await Task.Delay(300);
+                sftpProgressBar.Visibility = Visibility.Collapsed;
+                SftpLog($"✅ 文件夹已上传到: {remoteFolder}");
+                LoadFiles(CurrentPath);
+            }
+        }
+        private int UploadDirectoryWithProgress(SftpClient client, string localPath, string remotePath, int current, int total)
+        {
+            // 创建远程目录（如果不存在）
+            if (!client.Exists(ConvertToLinuxPath(remotePath)))
+            {
+                client.CreateDirectory(ConvertToLinuxPath(remotePath));
+            }
+
+            foreach (var file in Directory.GetFiles(localPath))
+            {
+                using (var fs = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                {
+                    string remoteFile = remotePath.TrimEnd('/') + "/" + Path.GetFileName(file);
+                    client.UploadFile(fs, ConvertToLinuxPath(remoteFile), true);
+                }
+                current++;
+                int percent = (int)((double)current / total * 100);
+                Dispatcher.Invoke(() =>
+                {
+                    sftpProgressBar.Value = percent;
+                    SftpLog($"⬆️ 已上传: {ConvertToLinuxPath(Path.Combine(remotePath, Path.GetFileName(file)))}");
+                });
+            }
+
+            foreach (var dir in Directory.GetDirectories(localPath))
+            {
+                string newRemotePath = remotePath.TrimEnd('/') + "/" + Path.GetFileName(dir);
+                current = UploadDirectoryWithProgress(client, dir, newRemotePath, current, total);
+            }
+            return current;
+        }
+        private void BtnRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            // 重新加载当前路径
+            LoadFiles(CurrentPath);
+        }
+
+        private void MenuRefresh_Click(object sender, RoutedEventArgs e)
+        {
+            // 重新加载当前路径
+            LoadFiles(CurrentPath);
         }
     }
     public class FilrOrDir : INotifyPropertyChanged
