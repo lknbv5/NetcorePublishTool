@@ -66,5 +66,18 @@ namespace PublishTool
                 OnPropertyChanged(nameof(Size));
             }
         }
+
+        public string SizeDisplay
+        {
+            get
+            {
+                if (IsDirectory) return "";
+                long size = Size;
+                if (size < 1024) return $"{size} B";
+                if (size < 1024 * 1024) return $"{size / 1024.0:F2} KB";
+                if (size < 1024 * 1024 * 1024) return $"{size / 1024.0 / 1024.0:F2} MB";
+                return $"{size / 1024.0 / 1024.0 / 1024.0:F2} GB";
+            }
+        }
     }
 }

@@ -955,19 +955,7 @@ namespace PublishTool
         {
             SelectedFiles.Clear();
         }
-        //打开远程文件窗口
-        private void RemoteFile_Click(object sender, RoutedEventArgs e)
-        {
-            if (SelectedServer == null)
-            {
-                Log("⚠️ 请先选择一个服务器配置!");
-                return;
-            }
-            var win = new SftpWindow(SelectedServer);
-            win.Owner = this;
-            win.ShowDialog();
-        }
-
+        
         private ObservableCollection<FileItem> _sftpDirAndFiles = new ObservableCollection<FileItem>();
         public ObservableCollection<FileItem> SftpDirAndFiles
         {

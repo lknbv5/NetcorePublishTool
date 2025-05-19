@@ -10,7 +10,6 @@
         Title=".Net Core WebApi发版工具" Height="800" Width="1290" ResizeMode="CanMinimize">
     <Window.Resources>
         <local:DirTypeConverter x:Key="DirTypeConverter"/>
-        <local:FileSizeConverter x:Key="FileSizeConverter"/>
     </Window.Resources>
     <TabControl Style="{StaticResource TabControlSliding}">
         <!-- 原MainWindow内容 -->
@@ -272,7 +271,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                             <GridViewColumn Header="文件大小" Width="100">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
-                                        <TextBlock Text="{Binding Size, Converter={StaticResource FileSizeConverter}}"/>
+                                        <TextBlock Text="{Binding SizeDisplay}"/>
                                     </DataTemplate>
                                 </GridViewColumn.CellTemplate>
                             </GridViewColumn>
