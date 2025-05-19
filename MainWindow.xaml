@@ -50,7 +50,8 @@
                         SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
                         DisplayMemberPath="Name"
                         SelectionChanged="CmbServers_SelectionChanged"/>
-                            <Button Content="添加" Width="50" Margin="3 0 0 0"  Click="BtnAddServer_Click" ToolTip="将当前配置添加到配置列表中"/>
+                            <Button Content="添加" Width="50" Margin="3 0 0 0"  Click="BtnAddServer_Click" />
+                            <Button Content="复制" Width="50" Margin="3 0 0 0"  Click="BtnCopyServer_Click" />
                             <Button Content="移除" Width="50" Margin="3 0 0 0"  Click="BtnRemoveServer_Click" ToolTip="移除当前选中的配置"/>
                         </StackPanel>
                     </Grid>
@@ -252,10 +253,10 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
 
                 <!-- 文件列表 -->
                 <ListView Name="lvFiles" Grid.Row="2" Grid.Column="0" MouseDoubleClick="lvFiles_MouseDoubleClick"
-              ItemsSource="{Binding SftpDirAndFiles}" SelectedItem="{Binding SelectedDirAndFiles}" SelectionMode="Extended">
+              ItemsSource="{Binding SftpDirAndFiles}" SelectedItem="{Binding SelectedDirAndFiles}" SelectionMode="Extended" DragEnter="lvFiles_DragEnter" Drop="lvFiles_Drop" AllowDrop="True" GridViewColumnHeader.Click="lvFiles_GridViewColumnHeader_Click">
                     <ListView.View>
                         <GridView>
-                            <GridViewColumn Header="名称" Width="550">
+                            <GridViewColumn Header="名称  (支持拖拽上传)" Width="550">
                                 <GridViewColumn.CellTemplate>
                                     <DataTemplate>
                                         <StackPanel Orientation="Horizontal">

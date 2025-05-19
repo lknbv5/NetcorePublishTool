@@ -5,7 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Drawing.Drawing2D;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Security;
@@ -15,10 +17,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
 using Ude;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
+using DragDropEffects = System.Windows.DragDropEffects;
 
 namespace PublishTool
 {
@@ -622,7 +626,25 @@ namespace PublishTool
                 Log($"✅ 已成功添加发版配置: {newServer.Name}");
             }
         }
-
+        //复制一份配置
+        private void BtnCopyServer_Click(object sender, RoutedEventArgs e)
+        {
+            var newServer = new ServerConfig
+            {
+                Name = SelectedServer.Name+"_"+DateTime.Now.ToString("yyyyMMddHHmmss"),
+                ServerIP = SelectedServer.ServerIP,
+                Username = SelectedServer.Username,
+                Password = SelectedServer.Password,
+                ExeName = SelectedServer.ExeName,
+                ServiceName = SelectedServer.ServiceName,
+                LocalPath = SelectedServer.LocalPath,
+                RemotePath = SelectedServer.RemotePath,
+            };
+            Servers.Add(newServer);
+            SelectedServer = newServer;
+            Log($"✅ 已成功复制发版配置: {newServer.Name}");
+            Log($"✅ 已切换至新复制的配置: {newServer.Name}");
+        }
         private void BtnLoadConfig_Click(object sender, RoutedEventArgs e)
         {
             //判断是否选择了配置文件
@@ -710,7 +732,11 @@ namespace PublishTool
 
         private void txtPassword_PasswordChanged(object sender, RoutedEventArgs e)
         {
-            this.SelectedServer.Password = (sender as PasswordBox).Password;
+            if (this.SelectedServer!=null)
+            {
+                this.SelectedServer.Password = (sender as PasswordBox).Password;
+            }
+            
         }
         //检查服务运行状态
         private void BtnCheckService_Click(object sender, RoutedEventArgs e)
@@ -998,6 +1024,8 @@ namespace PublishTool
                 });
             }
             SftpDirAndFiles =new ObservableCollection<FileItem>( items.OrderByDescending(i => i.IsDirectory).ThenBy(i => i.Name));
+            UpdateSftpHeaderSortIcon();
+            SortSftpList(_sftpSortColumn, _sftpSortDirection);
         }
 
 
@@ -1251,7 +1279,87 @@ namespace PublishTool
                 }
             }
         }
+        // 拖拽进入时改变鼠标样式
+        private void lvFiles_DragEnter(object sender, System.Windows.DragEventArgs e)
+        {
+            if (e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop))
+            {
+                e.Effects = DragDropEffects.Copy;
+            }
+            else
+            {
+                e.Effects = DragDropEffects.None;
+            }
+            e.Handled = true;
+        }
 
+        // 拖拽释放时上传文件
+        private async void lvFiles_Drop(object sender, System.Windows.DragEventArgs e)
+        {
+            if (!e.Data.GetDataPresent(System.Windows.DataFormats.FileDrop)) return;
+            var files = (string[])e.Data.GetData(System.Windows.DataFormats.FileDrop);
+            if (files == null || files.Length == 0) return;
+
+            // 统计文件和文件夹数量
+            int totalFiles = files.SelectMany(path =>
+                Directory.Exists(path) ? Directory.GetFiles(path, "*", SearchOption.AllDirectories) : new[] { path }
+            ).Count();
+
+            if (totalFiles == 0)
+            {
+                SftpLog("⚠️ 没有可上传的文件。");
+                return;
+            }
+
+            sftpProgressBar.Visibility = Visibility.Visible;
+            sftpProgressBar.Value = 0;
+            sftpProgressBar.Maximum = 100;
+            int current = 0;
+
+            await Task.Run(() =>
+            {
+                foreach (var path in files)
+                {
+                    if (File.Exists(path))
+                    {
+                        // 单文件
+                        try
+                        {
+                            using (var fs = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+                            {
+                                string remoteFile = CurrentPath.TrimEnd('/') + "/" + Path.GetFileName(path);
+                                _sftpClient.UploadFile(fs, remoteFile, true);
+                            }
+                            current++;
+                            Dispatcher.Invoke(() =>
+                            {
+                                int percent = (int)((double)current / totalFiles * 100);
+                                sftpProgressBar.Value = percent;
+                                SftpLog($"⬆️ 已上传: {Path.GetFileName(path)}");
+                            });
+                        }
+                        catch (Exception ex)
+                        {
+                            Dispatcher.Invoke(() =>
+                            {
+                                SftpLog($"❌ 上传失败: {Path.GetFileName(path)} - {ex.Message}");
+                            });
+                        }
+                    }
+                    else if (Directory.Exists(path))
+                    {
+                        // 文件夹
+                        current = UploadDirectoryWithProgress(_sftpClient, path, CurrentPath.TrimEnd('/') + "/" + Path.GetFileName(path), current, totalFiles);
+                    }
+                }
+            });
+
+            sftpProgressBar.Value = 100;
+            await Task.Delay(300);
+            sftpProgressBar.Visibility = Visibility.Collapsed;
+            SftpLog("✅ 拖拽上传完成。");
+            LoadFiles(CurrentPath);
+        }
         private int CountFiles(SftpClient client, string remotePath)
         {
             int count = 0;
@@ -1308,10 +1416,84 @@ namespace PublishTool
                 Close();
             }
         }
+        // 支持的文本文件扩展名
+        private static readonly string[] TextFileExtensions = {
+            // 常规文本
+            ".txt", ".log", ".md", ".me", ".readme", ".rst", ".out", ".lst", ".srt", ".vtt",
+            // 配置/数据
+            ".json", ".xml", ".csv", ".tsv", ".yaml", ".yml", ".ini", ".conf", ".cfg", ".config", ".env", ".properties", ".toml", ".manifest", ".lock",
+            // 脚本/代码
+            ".bat", ".cmd", ".ps1", ".sh", ".py", ".js", ".ts", ".css", ".scss", ".less", ".html", ".htm", ".php", ".asp", ".aspx", ".jsp", ".java",
+            ".c", ".cpp", ".h", ".hpp", ".cs", ".vb", ".go", ".rs", ".swift", ".kt", ".dart", ".sql", ".pl", ".rb", ".lua",
+            // 版本/构建/工程
+            ".gitignore", ".gitattributes", ".editorconfig", ".makefile", ".mak", ".dockerfile", ".npmrc", ".yarnrc", ".gradle", ".pro", ".props", ".targets",
+            ".sln", ".csproj", ".vbproj", ".vcxproj", ".cmake", ".am", ".ac", ".m4", ".rc", ".def", ".prj", ".pubxml", ".pubxml.user"
+        };
 
-        private void lvFiles_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        // 判断是否为文本文件
+        private bool IsTextFile(string fileName)
         {
-            LoadFiles(SelectedDirAndFiles.FullPath);
+            string ext = Path.GetExtension(fileName).ToLower();
+            return TextFileExtensions.Contains(ext);
+        }
+
+        private async void lvFiles_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+        {
+            if (SelectedDirAndFiles!=null)
+            {
+                if (SelectedDirAndFiles.IsDirectory)
+                {
+                    LoadFiles(SelectedDirAndFiles.FullPath);
+                }
+                else
+                {
+                    // 判断是否为文本文件
+                    if (IsTextFile(SelectedDirAndFiles.Name))
+                    {
+                        string tempFile = Path.Combine(Path.GetTempPath(), Guid.NewGuid() + "_" + SelectedDirAndFiles.Name);
+
+                        try
+                        {
+                            // 下载到本地临时文件
+                            using (var fs = new FileStream(tempFile, FileMode.Create, FileAccess.Write))
+                            {
+                                await Task.Run(() => _sftpClient.DownloadFile(SelectedDirAndFiles.FullPath, fs));
+                            }
+
+                            // 用本机默认编辑器打开
+                            var process = Process.Start(new ProcessStartInfo
+                            {
+                                FileName = tempFile,
+                                UseShellExecute = true
+                            });
+
+                            // 等待编辑器关闭
+                            await Task.Run(() => process.WaitForExit());
+
+                            // 编辑完成后上传回服务器
+                            using (var fs = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
+                            {
+                                await Task.Run(() => _sftpClient.UploadFile(fs, SelectedDirAndFiles.FullPath, true));
+                            }
+
+                            SftpLog($"✅ 文件已编辑并上传: {SelectedDirAndFiles.Name}");
+                        }
+                        catch (Exception ex)
+                        {
+                            SftpLog($"❌ 编辑或上传文件失败: {ex.Message}");
+                        }
+                        finally
+                        {
+                            // 删除本地临时文件
+                            try { File.Delete(tempFile); } catch { }
+                        }
+                    }
+                    else
+                    {
+                        SftpLog("⚠️ 暂不支持此类型文件的本地编辑。");
+                    }
+                }
+            }
         }
         //递归统计文件数
         private int CountLocalFiles(string folder)
@@ -1401,6 +1583,68 @@ namespace PublishTool
             // 重新加载当前路径
             LoadFiles(CurrentPath);
         }
+        private string _sftpSortColumn = "Name";
+        private ListSortDirection _sftpSortDirection = ListSortDirection.Ascending;
+        private void lvFiles_GridViewColumnHeader_Click(object sender, RoutedEventArgs e)
+        {
+            if (e.OriginalSource is GridViewColumnHeader header && header.Column != null)
+            {
+                string sortBy = null;
+                if (header.Column.Header.ToString().Contains("名称"))
+                    sortBy = "Name";
+                else if (header.Column.Header.ToString().Contains("修改时间"))
+                    sortBy = "LastWriteTime";
+                else if (header.Column.Header.ToString().Contains("文件大小"))
+                    sortBy = "Size";
+                else
+                    return;
+
+                ListSortDirection direction = ListSortDirection.Ascending;
+                if (_sftpSortColumn == sortBy && _sftpSortDirection == ListSortDirection.Ascending)
+                    direction = ListSortDirection.Descending;
+
+                _sftpSortColumn = sortBy;
+                _sftpSortDirection = direction;
+                SortSftpList(_sftpSortColumn, _sftpSortDirection);
+                UpdateSftpHeaderSortIcon();
+            }
+        }
+        private void UpdateSftpHeaderSortIcon()
+        {
+            foreach (var col in ((GridView)lvFiles.View).Columns)
+            {
+                string header = col.Header as string;
+                if (header == null) continue;
+
+                if ((_sftpSortColumn == "Name" && header.Contains("名称")) ||
+                    (_sftpSortColumn == "LastWriteTime" && header.Contains("修改时间")) ||
+                    (_sftpSortColumn == "Size" && header.Contains("文件大小")))
+                {
+                    string arrow = _sftpSortDirection == ListSortDirection.Ascending ? " ▲" : " ▼";
+                    if (!header.EndsWith("▲") && !header.EndsWith("▼"))
+                        col.Header = header.TrimEnd(' ', '▲', '▼') + arrow;
+                    else
+                        col.Header = header.TrimEnd(' ', '▲', '▼') + arrow;
+                }
+                else
+                {
+                    // 去掉箭头
+                    col.Header = header.TrimEnd(' ', '▲', '▼');
+                }
+            }
+        }
+        // 排序实现
+        private void SortSftpList(string sortBy, ListSortDirection direction)
+        {
+            ICollectionView dataView = CollectionViewSource.GetDefaultView(lvFiles.ItemsSource);
+            if (dataView != null)
+            {
+                dataView.SortDescriptions.Clear();
+                dataView.SortDescriptions.Add(new SortDescription(sortBy, direction));
+                dataView.Refresh();
+            }
+        }
+
     }
     public class FilrOrDir : INotifyPropertyChanged
     {
