@@ -611,25 +611,22 @@ namespace PublishTool
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e)
         {
-            if (Servers.Any(o=>o.Name==txtName.Text))
+            var dlg = new InputDialog("请输入新配置名:");
+            dlg.Owner = this;
+            if (dlg.ShowDialog() == true && !string.IsNullOrWhiteSpace(dlg.InputText))
             {
-                Log("⚠️ 该配置名称已存在，请重新输入!");
-                return;
+                if (Servers.Any(o => o.Name == dlg.InputText))
+                {
+                    Log("⚠️ 该配置名称已存在，请重新输入!");
+                    return;
+                }
+                var newServer = new ServerConfig
+                {
+                    Name = dlg.InputText
+                };
+                Servers.Add(newServer);
+                Log($"✅ 已成功添加发版配置: {newServer.Name}");
             }
-            var newServer = new ServerConfig
-            {
-                Name = txtName.Text,
-                ServerIP = txtServerIP.Text,
-                Username = txtUserName.Text,
-                Password = txtPassword.Password,
-                LocalPath = txtLocalPath.Text,
-                RemotePath = txtRemotePath.Text,
-                ServiceName = txtServiceName.Text,
-                ExeName = txtExeName.Text
-            };
-
-            Servers.Add(newServer);
-            Log($"✅ 已成功添加发版配置: {newServer.Name}");
         }
 
         private void BtnLoadConfig_Click(object sender, RoutedEventArgs e)
@@ -955,19 +952,7 @@ namespace PublishTool
         {
             SelectedFiles.Clear();
         }
-        //打开远程文件窗口
-        private void RemoteFile_Click(object sender, RoutedEventArgs e)
-        {
-            if (SelectedServer == null)
-            {
-                Log("⚠️ 请先选择一个服务器配置!");
-                return;
-            }
-            var win = new SftpWindow(SelectedServer);
-            win.Owner = this;
-            win.ShowDialog();
-        }
-
+        
         private ObservableCollection<FileItem> _sftpDirAndFiles = new ObservableCollection<FileItem>();
         public ObservableCollection<FileItem> SftpDirAndFiles
         {
