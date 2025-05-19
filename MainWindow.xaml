@@ -87,7 +87,7 @@
 
                             <StackPanel  Orientation="Horizontal" >
                                 <TextBlock VerticalAlignment="Center">密码:</TextBlock>
-                                <PasswordBox x:Name="txtPassword"  Width="147" Margin="5" Tag="用户名" PasswordChanged="txtPassword_PasswordChanged"/>
+                                <PasswordBox x:Name="txtPassword"  Width="147" Margin="5" Tag="用户名"  PasswordChanged="txtPassword_PasswordChanged"/>
                             </StackPanel>
                         </StackPanel>
                         <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="1">
@@ -134,7 +134,7 @@
       IsEnabled="{Binding IsChecked, ElementName=rbPartial}"/>
 
                         </StackPanel>
-                        <TextBlock Text="(💡Tip：↓ 列表双击可移除单条)" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 70 0"></TextBlock>
+                        <TextBlock Text="(💡Tip：↓ 双击可移除单条)" VerticalAlignment="Center" HorizontalAlignment="Right" Margin="0 0 70 0"></TextBlock>
                         <Button Content="↓ 清空"  Width="60" Margin="2" Click="BtnClearFileList_Click" VerticalAlignment="Center" HorizontalAlignment="Right" ></Button>
                         <ListBox x:Name="lstFiles" Grid.Row="1" Margin="2" Height="auto" IsEnabled="{Binding ElementName=rbPartial,Path=IsChecked}"
                        ItemsSource="{Binding SelectedFiles}" MouseDoubleClick="lstFiles_MouseDoubleClick">

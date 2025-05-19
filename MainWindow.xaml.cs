@@ -596,17 +596,11 @@ namespace PublishTool
 
         private void CmbServers_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-            //if (cmbServers.SelectedItem is ServerConfig selectedServer)
-            //{
-            //    txtName.Text = selectedServer.Name;
-            //    txtServerIP.Text = selectedServer.ServerIP;
-            //    txtUserName.Text = selectedServer.Username;
-            //    txtPassword.Password = selectedServer.Password;
-            //    txtExeName.Text = selectedServer.ExeName;
-            //    txtServiceName.Text = selectedServer.ServiceName;
-            //    txtLocalPath.Text = selectedServer.LocalPath;
-            //    txtRemotePath.Text = selectedServer.RemotePath;
-            //}
+            //密码无法绑定, 单独处理
+            if (cmbServers.SelectedItem is ServerConfig selectedServer)
+            {
+                txtPassword.Password = selectedServer.Password;
+            }
         }
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e)
