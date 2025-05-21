@@ -63,6 +63,9 @@ namespace PublishTool
                 _selectedServer = value;
                 OnPropertyChanged(nameof(SelectedServer));
                 ConnectAndLoad();
+                //// 关键：同步到终端
+                //if (terminalControl != null)
+                //    terminalControl.ServerConfig = _selectedServer;
             }
         }
         private string _configPath;
@@ -1470,13 +1473,24 @@ namespace PublishTool
                             // 等待编辑器关闭
                             await Task.Run(() => process.WaitForExit());
 
-                            // 编辑完成后上传回服务器
-                            using (var fs = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
-                            {
-                                await Task.Run(() => _sftpClient.UploadFile(fs, SelectedDirAndFiles.FullPath, true));
-                            }
+                            // 弹窗询问用户是否保存到服务器
+                            var saveResult = HandyControl.Controls.MessageBox.Show(
+                                $"是否将编辑后的文件保存回服务器？\n\n文件名: {SelectedDirAndFiles.Name}",
+                                "保存到服务器", MessageBoxButton.YesNo, MessageBoxImage.Question);
 
-                            SftpLog($"✅ 文件已编辑并上传: {SelectedDirAndFiles.Name}");
+                            if (saveResult == MessageBoxResult.Yes)
+                            {
+                                // 编辑完成后上传回服务器
+                                using (var fs = new FileStream(tempFile, FileMode.Open, FileAccess.Read))
+                                {
+                                    await Task.Run(() => _sftpClient.UploadFile(fs, SelectedDirAndFiles.FullPath, true));
+                                }
+                                SftpLog($"✅ 文件已编辑并上传: {SelectedDirAndFiles.Name}");
+                            }
+                            else
+                            {
+                                SftpLog($"ℹ️ 文件已关闭: {SelectedDirAndFiles.Name}");
+                            }
                         }
                         catch (Exception ex)
                         {
@@ -1645,6 +1659,92 @@ namespace PublishTool
             }
         }
 
+        private void Window_Closed(object sender, EventArgs e)
+        {
+            _sftpClient.Dispose();
+        }
+
+        private async void BtnSystemSSH_Click(object sender, RoutedEventArgs e)
+        {
+            if (SelectedServer == null || string.IsNullOrEmpty(SelectedServer.ServerIP) ||
+        string.IsNullOrEmpty(SelectedServer.Username) || string.IsNullOrEmpty(SelectedServer.Password))
+            {
+                HandyControl.Controls.MessageBox.Show("请先选择有效的服务器配置，并填写用户名和密码。", "提醒", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            string sshDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".ssh");
+            string privateKeyPath = Path.Combine(sshDir, "id_rsa");
+            string publicKeyPath = Path.Combine(sshDir, "id_rsa.pub");
+
+            try
+            {
+                // 1. 检查并生成密钥对
+                if (!File.Exists(privateKeyPath) || !File.Exists(publicKeyPath))
+                {
+                    Directory.CreateDirectory(sshDir);
+                    var psi = new ProcessStartInfo
+                    {
+                        FileName = "ssh-keygen",
+                        Arguments = $"-t rsa -b 2048 -N \"\" -f \"{privateKeyPath}\"",
+                        UseShellExecute = false,
+                        CreateNoWindow = true
+                    };
+                    var proc = Process.Start(psi);
+                    proc.WaitForExit();
+                    if (!File.Exists(publicKeyPath))
+                    {
+                        HandyControl.Controls.MessageBox.Show("密钥生成失败，请检查ssh-keygen是否可用。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                        return;
+                    }
+                }
+
+                // 2. 读取本地公钥
+                string publicKey = File.ReadAllText(publicKeyPath).Trim();
+
+                // 3. 上传公钥到Windows服务器（PowerShell方式，防止重复）
+                await Task.Run(() =>
+                {
+                    using (var client = new SshClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password))
+                    {
+                        client.Connect();
+
+                        // 确保.ssh目录存在
+                        client.RunCommand("powershell -Command \"if (!(Test-Path $env:USERPROFILE\\.ssh)) { New-Item -ItemType Directory -Path $env:USERPROFILE\\.ssh }\"");
+
+                        // 检查并追加公钥（防止重复）
+                        string escapedKey = publicKey.Replace("'", "''");
+                        string checkAndAddCmd =
+                            $"powershell -Command \"if ((Test-Path $env:USERPROFILE\\.ssh\\authorized_keys) -and " +
+                            $"(Get-Content $env:USERPROFILE\\.ssh\\authorized_keys | Select-String -Pattern '{escapedKey}')) " +
+                            $"{{}} else {{ Add-Content -Path $env:USERPROFILE\\.ssh\\authorized_keys -Value '{escapedKey}' }}\"";
+                        client.RunCommand(checkAndAddCmd);
+
+                        client.Disconnect();
+                    }
+                });
+
+                // 4. 自动打开本地终端并连接服务器
+                string sshCmd = $"ssh {SelectedServer.Username}@{SelectedServer.ServerIP}";
+                try
+                {
+                    Process.Start(new ProcessStartInfo
+                    {
+                        FileName = "cmd.exe",
+                        Arguments = $"/k {sshCmd}",
+                        UseShellExecute = true
+                    });
+                }
+                catch (Exception ex)
+                {
+                    HandyControl.Controls.MessageBox.Show($"自动打开终端失败: {ex.Message}", "提醒", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+            }
+            catch (Exception ex)
+            {
+                HandyControl.Controls.MessageBox.Show($"自动配置免密登录失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
     }
     public class FilrOrDir : INotifyPropertyChanged
     {

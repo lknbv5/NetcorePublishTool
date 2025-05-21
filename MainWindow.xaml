@@ -7,13 +7,13 @@
         xmlns:hc="https://handyorg.github.io/handycontrol"
         mc:Ignorable="d"
         Icon="logo.ico"
-        Title=".Net Core WebApi发版工具" Height="800" Width="1290" ResizeMode="CanMinimize">
+        Title=".Net Core WebApi发版工具" Height="800" Width="1290" ResizeMode="CanMinimize" Closed="Window_Closed">
     <Window.Resources>
         <local:DirTypeConverter x:Key="DirTypeConverter"/>
     </Window.Resources>
     <TabControl Style="{StaticResource TabControlSliding}">
         <!-- 原MainWindow内容 -->
-        <TabItem Header="发版功能" Width="200">
+        <TabItem Header="发版功能" Width="250">
             <Grid Margin="5">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
@@ -201,10 +201,15 @@ Click="BtnDeploy_Click" Style="{DynamicResource ButtonSuccess}"/>
 Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/>
                 </StackPanel>
                 <Button Content="清空日志" Width="80" HorizontalAlignment="Right" Grid.Column="1"  Grid.Row="4" Click="DelLog_Click" Style="{DynamicResource ButtonWarning}" />
+                <Button Grid.Column="1"  Grid.Row="4"
+                     x:Name="btnSystemSSH"
+                     Content="终端打开"
+                     Click="BtnSystemSSH_Click" Width="80"
+                       Background="DarkCyan" BorderThickness="0" Foreground="White" HorizontalAlignment="Left" Margin="13,5,0,0" />
             </Grid>
         </TabItem>
         <!-- SFTP管理 -->
-        <TabItem Header="SFTP文件管理"  Width="200">
+        <TabItem Header="SFTP文件管理"  Width="250">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*" />
@@ -218,7 +223,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                 </Grid.RowDefinitions>
 
                 <!-- 顶部：选择配置 -->
-                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" Margin="5,5,5,0">
+                <StackPanel Orientation="Horizontal" Grid.Row="0" Grid.Column="0" Margin="8,5,5,0">
                     <TextBlock VerticalAlignment="Center">选择配置：</TextBlock>
                     <ComboBox x:Name="cmbServers1"
                   Width="400"
@@ -229,7 +234,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                 </StackPanel>
 
                 <!-- 顶部右侧：操作日志 -->
-                <GroupBox Header="操作日志" Grid.Row="0" Grid.Column="1" Grid.RowSpan="4" Margin="5 5 0 0">
+                <GroupBox Header="操作日志" Grid.Row="0" Grid.Column="1" Grid.RowSpan="3" Margin="5 5 5 0">
                     <Grid>
                         <Grid.RowDefinitions>
                             <RowDefinition Height="*" />
@@ -238,11 +243,17 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                         <TextBox x:Name="txtSftpLog" IsReadOnly="True" Margin="2"
                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto"
                      FontFamily="Consolas" FontSize="12" VerticalContentAlignment="Top"/>
-                        <Button Content="清空日志" Grid.Row="1" HorizontalAlignment="Right" Margin="0,5,0,0" Style="{DynamicResource ButtonWarning}"
-                    Click="DelSftpLog_Click" Width="80"/>
                     </Grid>
                 </GroupBox>
-
+                <DockPanel  Grid.Row="3" Grid.Column="1" LastChildFill="False">
+                    <Button 
+                        x:Name="btnSystemSSH1"
+                        Content="终端打开"
+                        Click="BtnSystemSSH_Click"
+                        Margin="5,0,0,0"  BorderThickness="0" Background="DarkCyan" Foreground="White" Width="80"/>
+                    <Button Content="清空日志"  Margin="0,0,5,0" DockPanel.Dock="Right" Style="{DynamicResource ButtonWarning}"
+                        Click="DelSftpLog_Click" Width="80"/>
+                </DockPanel>
                 <!-- 路径和操作按钮 -->
                 <StackPanel Orientation="Horizontal" Grid.Row="1" Grid.Column="0" Margin="5,5,5,5">
                     <Button Content="返回上级" Click="BtnUp_Click" Margin="0,0,10,0"/>
@@ -252,7 +263,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                 </StackPanel>
 
                 <!-- 文件列表 -->
-                <ListView Name="lvFiles" Grid.Row="2" Grid.Column="0" MouseDoubleClick="lvFiles_MouseDoubleClick"
+                <ListView Name="lvFiles" Grid.Row="2" Grid.Column="0" Margin="5 0 0 0" MouseDoubleClick="lvFiles_MouseDoubleClick"
               ItemsSource="{Binding SftpDirAndFiles}" SelectedItem="{Binding SelectedDirAndFiles}" SelectionMode="Extended" DragEnter="lvFiles_DragEnter" Drop="lvFiles_Drop" AllowDrop="True" GridViewColumnHeader.Click="lvFiles_GridViewColumnHeader_Click">
                     <ListView.View>
                         <GridView>
@@ -292,13 +303,16 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                 </ListView>
 
                 <!-- 进度条 -->
-                <StackPanel Grid.Row="3" Grid.Column="0" Height="20" Orientation="Horizontal" Margin="0 5 0 5">
-                    <TextBlock Text="进度：" Margin="5,2,0,0"/>
+                <StackPanel Grid.Row="3" Grid.Column="0" Height="40" Orientation="Horizontal" Margin="0 0 0 0">
+                    <TextBlock Text="进度：" Margin="8 0" VerticalAlignment="Center"/>
                     <ProgressBar x:Name="sftpProgressBar"
-                     Minimum="0" Maximum="100" Value="0" Width="820"/>
+                     Minimum="0" Maximum="100" Value="0" Width="810"/>
                 </StackPanel>
             </Grid>
         </TabItem>
+        <!--<TabItem Header="终端">
+            <local:TerminalControl x:Name="terminalControl" />
+        </TabItem>-->
     </TabControl>
     
 </Window>
