@@ -10,6 +10,7 @@
         Title=".Net Core WebApi发版工具" Height="800" Width="1290" ResizeMode="CanMinimize" Closed="Window_Closed">
     <Window.Resources>
         <local:DirTypeConverter x:Key="DirTypeConverter"/>
+        <local:BoolToColorConverter x:Key="BoolToColorConverter"/>
     </Window.Resources>
     <TabControl Style="{StaticResource TabControlSliding}">
         <!-- 原MainWindow内容 -->
@@ -231,7 +232,18 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                   SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
                   DisplayMemberPath="Name"
                   SelectionChanged="CmbServers_SelectionChanged"/>
-                    <Button Content="连 接" Margin="10 0 0 0" Click="BtnSftpConnect_Click"></Button>
+                    <TextBlock Margin="25,0,0,0" Text="状态：" FontSize="12" VerticalAlignment="Center"></TextBlock>
+                    <Ellipse Width="14" Height="14"  VerticalAlignment="Center">
+                        <Ellipse.Fill>
+                            <SolidColorBrush Color="{Binding SftpConnected, Converter={StaticResource BoolToColorConverter}}" />
+                        </Ellipse.Fill>
+                        <Ellipse.Stroke>
+                            <SolidColorBrush Color="Transparent"/>
+                        </Ellipse.Stroke>
+                        <Ellipse.StrokeThickness>1</Ellipse.StrokeThickness>
+                    </Ellipse>
+                    <TextBlock Text="IP：" VerticalAlignment="Center" Margin="5,0,0,0"></TextBlock>
+                    <TextBlock Text="{Binding SelectedServer.ServerIP}" VerticalAlignment="Center" />
                 </StackPanel>
 
                 <!-- 顶部右侧：操作日志 -->

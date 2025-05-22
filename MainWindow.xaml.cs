@@ -20,6 +20,7 @@ using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Forms;
 using System.Windows.Input;
+using System.Windows.Threading;
 using Ude;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement.Window;
 using DragDropEffects = System.Windows.DragDropEffects;
@@ -34,6 +35,10 @@ namespace PublishTool
         private SftpClient _sftpClient;
         private BackgroundWorker _worker;
         private bool _isDeploying;
+
+        //sftp连接状态检查器
+        private bool _lastSftpConnected;
+        private DispatcherTimer _sftpStatusTimer;
 
         public event PropertyChangedEventHandler PropertyChanged;
 
@@ -60,11 +65,27 @@ namespace PublishTool
             get => _selectedServer;
             set
             {
+                var needReConnect=false;
+                if (value != null&& value.ServerIP!= _selectedServer.ServerIP&& value.Username!= _selectedServer.Username&& value.Password!= _selectedServer.Password)
+                {
+                    needReConnect = true;
+                }
                 _selectedServer = value;
                 OnPropertyChanged(nameof(SelectedServer));
-                //// 关键：同步到终端
-                //if (terminalControl != null)
-                //    terminalControl.ServerConfig = _selectedServer;
+                if (needReConnect)
+                {
+                    ConnectAndLoad();
+                }
+            }
+        }
+        private void DisconnectSftp()
+        {
+            CurrentPath = "/";
+            this.SftpDirAndFiles.Clear();
+            if (_sftpClient!= null)
+            {
+                _sftpClient.Disconnect();
+                UpdateSftpConnected();
             }
         }
         private string _configPath;
@@ -146,8 +167,22 @@ namespace PublishTool
                 SelectedServer=Servers[0];
             }
 
-            //ConnectAndLoad();
+            _sftpStatusTimer = new DispatcherTimer();
+            _sftpStatusTimer.Interval = TimeSpan.FromSeconds(1); // 每秒检查一次
+            _sftpStatusTimer.Tick += SftpStatusTimer_Tick;
+            _sftpStatusTimer.Start();
         }
+        private void SftpStatusTimer_Tick(object sender, EventArgs e)
+        {
+            bool current = SftpConnected;
+            if (current != _lastSftpConnected)
+            {
+                OnPropertyChanged(nameof(SftpConnected));
+                _lastSftpConnected = current;
+            }
+        }
+
+
         // 进度更新处理函数
         private void Worker_ProgressChanged(object sender, ProgressChangedEventArgs e)
         {
@@ -603,7 +638,10 @@ namespace PublishTool
         private void CmbServers_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             //密码无法绑定, 单独处理
-            txtPassword.Password = SelectedServer.Password;
+            if (SelectedServer!=null)
+            {
+                txtPassword.Password = SelectedServer.Password;
+            }
         }
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e)
@@ -1413,15 +1451,17 @@ namespace PublishTool
                 if (_sftpClient != null)
                 {
                     _sftpClient.Disconnect();
+                    UpdateSftpConnected();
                 }
                 _sftpClient = new SftpClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password);
                 _sftpClient.Connect();
+                UpdateSftpConnected();
                 SftpLog($"🆗 已连接到 {SelectedServer.ServerIP}。");
                 LoadFiles(CurrentPath);
             }
             catch (Exception ex)
             {
-                HandyControl.Controls.MessageBox.Show("连接SFTP失败: " + ex.Message,"连接失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                SftpLog($"❌ 连接失败: {ex.Message}");
                 SftpDirAndFiles.Clear();
             }
         }
@@ -1629,6 +1669,17 @@ namespace PublishTool
                 UpdateSftpHeaderSortIcon();
             }
         }
+
+        public bool SftpConnected
+        {
+            get => _sftpClient != null && _sftpClient.IsConnected;
+        }
+        // 在连接/断开后调用
+        private void UpdateSftpConnected()
+        {
+            OnPropertyChanged(nameof(SftpConnected));
+        }
+
         private void UpdateSftpHeaderSortIcon()
         {
             foreach (var col in ((GridView)lvFiles.View).Columns)
@@ -1667,7 +1718,16 @@ namespace PublishTool
 
         private void Window_Closed(object sender, EventArgs e)
         {
-            _sftpClient.Dispose();
+            if (_sftpClient!=null)
+            {
+                if (_sftpClient.IsConnected)
+                {
+                    _sftpClient.Disconnect();
+                    UpdateSftpConnected();
+                }
+                _sftpClient.Dispose();
+            }
+            _sftpStatusTimer.Stop();
         }
 
         private async void BtnSystemSSH_Click(object sender, RoutedEventArgs e)
@@ -1750,11 +1810,6 @@ namespace PublishTool
             {
                 HandyControl.Controls.MessageBox.Show($"自动配置免密登录失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-        }
-
-        private void BtnSftpConnect_Click(object sender, RoutedEventArgs e)
-        {
-            ConnectAndLoad();
         }
     }
     public class FilrOrDir : INotifyPropertyChanged
