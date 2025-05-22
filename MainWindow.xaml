@@ -231,6 +231,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                   SelectedItem="{Binding SelectedServer, Mode=TwoWay}"
                   DisplayMemberPath="Name"
                   SelectionChanged="CmbServers_SelectionChanged"/>
+                    <Button Content="连 接" Margin="10 0 0 0" Click="BtnSftpConnect_Click"></Button>
                 </StackPanel>
 
                 <!-- 顶部右侧：操作日志 -->

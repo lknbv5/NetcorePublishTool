@@ -62,7 +62,6 @@ namespace PublishTool
             {
                 _selectedServer = value;
                 OnPropertyChanged(nameof(SelectedServer));
-                ConnectAndLoad();
                 //// 关键：同步到终端
                 //if (terminalControl != null)
                 //    terminalControl.ServerConfig = _selectedServer;
@@ -604,10 +603,7 @@ namespace PublishTool
         private void CmbServers_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             //密码无法绑定, 单独处理
-            if (cmbServers.SelectedItem is ServerConfig selectedServer)
-            {
-                txtPassword.Password = selectedServer.Password;
-            }
+            txtPassword.Password = SelectedServer.Password;
         }
 
         private void BtnAddServer_Click(object sender, RoutedEventArgs e)
@@ -1011,24 +1007,28 @@ namespace PublishTool
 
         private void LoadFiles(string path)
         {
-            path = ConvertToLinuxPath(path);
-            CurrentPath = path;
-            var items = new List<FileItem>();
-            foreach (var entry in _sftpClient.ListDirectory(path))
+            if (string.IsNullOrEmpty(path)) return;
+            if (_sftpClient != null && _sftpClient.IsConnected)
             {
-                if (entry.Name == "." || entry.Name == "..") continue;
-                items.Add(new FileItem
+                path = ConvertToLinuxPath(path);
+                CurrentPath = path;
+                var items = new List<FileItem>();
+                foreach (var entry in _sftpClient.ListDirectory(path))
                 {
-                    Name = entry.Name,
-                    FullPath = entry.FullName,
-                    IsDirectory = entry.IsDirectory,
-                    LastWriteTime = entry.LastWriteTime,
-                    Size = entry.IsDirectory ? 0 : entry.Length
-                });
+                    if (entry.Name == "." || entry.Name == "..") continue;
+                    items.Add(new FileItem
+                    {
+                        Name = entry.Name,
+                        FullPath = entry.FullName,
+                        IsDirectory = entry.IsDirectory,
+                        LastWriteTime = entry.LastWriteTime,
+                        Size = entry.IsDirectory ? 0 : entry.Length
+                    });
+                }
+                SftpDirAndFiles = new ObservableCollection<FileItem>(items.OrderByDescending(i => i.IsDirectory).ThenBy(i => i.Name));
+                UpdateSftpHeaderSortIcon();
+                SortSftpList(_sftpSortColumn, _sftpSortDirection);
             }
-            SftpDirAndFiles =new ObservableCollection<FileItem>( items.OrderByDescending(i => i.IsDirectory).ThenBy(i => i.Name));
-            UpdateSftpHeaderSortIcon();
-            SortSftpList(_sftpSortColumn, _sftpSortDirection);
         }
 
 
@@ -1043,8 +1043,12 @@ namespace PublishTool
 
         private void BtnGo_Click(object sender, RoutedEventArgs e)
         {
-            if (_sftpClient.Exists(CurrentPath))
-                LoadFiles(CurrentPath);
+            if (_sftpClient!=null&&_sftpClient.IsConnected)
+            {
+                if (_sftpClient.Exists(CurrentPath))
+                    LoadFiles(CurrentPath);
+            }
+            
         }
 
         private void SftpLog(string message)
@@ -1406,17 +1410,19 @@ namespace PublishTool
             try
             {
                 CurrentPath = "/";
-                if (_sftpClient == null)
+                if (_sftpClient != null)
                 {
-                    _sftpClient = new SftpClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password);
-                    _sftpClient.Connect();
+                    _sftpClient.Disconnect();
                 }
+                _sftpClient = new SftpClient(SelectedServer.ServerIP, SelectedServer.Username, SelectedServer.Password);
+                _sftpClient.Connect();
+                SftpLog($"🆗 已连接到 {SelectedServer.ServerIP}。");
                 LoadFiles(CurrentPath);
             }
             catch (Exception ex)
             {
-                HandyControl.Controls.MessageBox.Show("连接SFTP失败: " + ex.Message);
-                Close();
+                HandyControl.Controls.MessageBox.Show("连接SFTP失败: " + ex.Message,"连接失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                SftpDirAndFiles.Clear();
             }
         }
         // 支持的文本文件扩展名
@@ -1744,6 +1750,11 @@ namespace PublishTool
             {
                 HandyControl.Controls.MessageBox.Show($"自动配置免密登录失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+
+        private void BtnSftpConnect_Click(object sender, RoutedEventArgs e)
+        {
+            ConnectAndLoad();
         }
     }
     public class FilrOrDir : INotifyPropertyChanged
