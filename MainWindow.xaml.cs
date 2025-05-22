@@ -66,9 +66,16 @@ namespace PublishTool
             set
             {
                 var needReConnect=false;
-                if (value != null&& value.ServerIP!= _selectedServer.ServerIP&& value.Username!= _selectedServer.Username&& value.Password!= _selectedServer.Password)
+                if (_selectedServer == null)
                 {
                     needReConnect = true;
+                }
+                else
+                {
+                    if (value != null && value.ServerIP != _selectedServer.ServerIP && value.Username != _selectedServer.Username && value.Password != _selectedServer.Password)
+                    {
+                        needReConnect = true;
+                    }
                 }
                 _selectedServer = value;
                 OnPropertyChanged(nameof(SelectedServer));
