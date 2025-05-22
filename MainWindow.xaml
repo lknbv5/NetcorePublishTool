@@ -182,15 +182,15 @@
                 <StackPanel  Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
                   HorizontalAlignment="Left">
                     <Button Content="查看服务列表" Width="100"  x:Name="BtnCheckServiceList"
-                  Click="BtnCheckServiceList_Click" Background="MediumSlateBlue" Foreground="White"/>
+                  Click="BtnCheckServiceList_Click" Background="MediumSlateBlue" BorderThickness="0" Foreground="White"/>
                     <Button Content="查看服务状态" Width="100" Margin="5" x:Name="BtnCheckService"
-       Click="BtnCheckService_Click"   Background="MediumSlateBlue" Foreground="White"/>
+       Click="BtnCheckService_Click"   Background="MediumSlateBlue" BorderThickness="0"  Foreground="White"/>
                     <Button Content="开启服务" Width="80" Margin="5" x:Name="BtnStartService"
-       Click="BtnStartService_Click"  Background="LightSeaGreen" Foreground="White"/>
+       Click="BtnStartService_Click"  Background="LightSeaGreen" BorderThickness="0"  Foreground="White"/>
                     <Button Content="停止服务" Width="80" Margin="5" x:Name="BtnStopService"
-       Click="BtnStopService_Click"  Background="DarkOrange" Foreground="White"/>
+       Click="BtnStopService_Click"  Background="DarkOrange" BorderThickness="0"  Foreground="White"/>
                     <Button Content="移除服务" Width="80" Margin="5" x:Name="BtnRemoveService"
-       Click="BtnRemoveService_Click"  Background="OrangeRed" Foreground="White"/>
+       Click="BtnRemoveService_Click"  Background="OrangeRed" BorderThickness="0"  Foreground="White"/>
 
                 </StackPanel>
                 <StackPanel Orientation="Horizontal" Grid.Column="0" Grid.Row="4" Margin="0 5 0 0"
@@ -199,7 +199,7 @@
                     <Button Content="开始部署" FontWeight="Black" Width="90"  x:Name="BtnDeploy"
 Click="BtnDeploy_Click" Style="{DynamicResource ButtonSuccess}"/>
                     <Button Content="停止部署" Width="80" Margin="5" x:Name="BtnStop"
-Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/>
+Click="BtnStop_Click" IsEnabled="False"  Background="Orange"  BorderThickness="0"  Foreground="White"/>
                 </StackPanel>
                 <Button Content="清空日志" Width="80" HorizontalAlignment="Right" Grid.Column="1"  Grid.Row="4" Click="DelLog_Click" Style="{DynamicResource ButtonWarning}" />
                 <Button Grid.Column="1"  Grid.Row="4"
@@ -319,7 +319,7 @@ Click="BtnStop_Click" IsEnabled="False"  Background="Orange" Foreground="White"/
                 <StackPanel Grid.Row="3" Grid.Column="0" Height="40" Orientation="Horizontal" Margin="0 0 0 0">
                     <TextBlock Text="进度：" Margin="8 0" VerticalAlignment="Center"/>
                     <ProgressBar x:Name="sftpProgressBar"
-                     Minimum="0" Maximum="100" Value="0" Width="810"/>
+                     Minimum="0" Maximum="100" Value="0" Width="810" Visibility="Collapsed"/>
                 </StackPanel>
             </Grid>
         </TabItem>

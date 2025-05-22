@@ -459,6 +459,8 @@ namespace PublishTool
                         throw new Exception("⚠️ 服务停止失败!无法继续部署!");
                     }
                 }
+                //TODO:备份之前的文件夹, 压缩成压缩包,检查已存在的备份压缩包, 保留最近的5个备份, 删除旧的备份
+
 
                 // 上传文件
                 if (IsFullCheck)//全量
