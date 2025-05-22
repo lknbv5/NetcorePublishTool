@@ -72,7 +72,7 @@ namespace PublishTool
                 }
                 else
                 {
-                    if (value != null && value.ServerIP != _selectedServer.ServerIP && value.Username != _selectedServer.Username && value.Password != _selectedServer.Password)
+                    if (value != null && (value.ServerIP != _selectedServer.ServerIP || value.Username != _selectedServer.Username || value.Password != _selectedServer.Password))
                     {
                         needReConnect = true;
                     }
