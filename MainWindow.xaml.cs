@@ -234,7 +234,7 @@ namespace PublishTool
             {
                 if (dialog.ShowDialog() ==System.Windows.Forms.DialogResult.OK) // 修复对正确枚举的引用
                 {
-                    txtLocalPath.Text = dialog.SelectedPath;
+                    SelectedServer.LocalPath = dialog.SelectedPath;
                 }
             }
         }
@@ -460,7 +460,10 @@ namespace PublishTool
                     }
                 }
                 //TODO:备份之前的文件夹, 压缩成压缩包,检查已存在的备份压缩包, 保留最近的5个备份, 删除旧的备份
-
+                if (SelectedServer.IsBackup)
+                {
+                    BackupRemoteDirectory(sshClient);
+                }
 
                 // 上传文件
                 if (IsFullCheck)//全量
@@ -1819,6 +1822,43 @@ namespace PublishTool
             {
                 HandyControl.Controls.MessageBox.Show($"自动配置免密登录失败: {ex.Message}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
+        }
+        // 备份之前的文件夹, 压缩成压缩包, 检查已存在的备份压缩包, 保留最近的5个备份, 删除旧的备份
+        private void BackupRemoteDirectory(SshClient sshClient)
+        {
+            // 1. 生成备份文件名
+            string remoteDir = SelectedServer.RemotePath.TrimEnd('\\', '/').Replace("\\", "/");
+            string backupDirStr = "PublishBackup";
+            string backupDir = remoteDir+"/"+backupDirStr;
+            string timestamp = DateTime.Now.ToString("yyyyMMdd-HHmmss");
+            string zipName = $"Backup_{timestamp}.zip";
+            string backupZipPath = $"{backupDir}/{zipName}";
+
+            // 2. 创建备份目录（如果不存在）
+            string createBackupDirCmd = $"powershell -Command \"if (!(Test-Path '{backupDir}')) {{ New-Item -ItemType Directory -Path '{backupDir}' | Out-Null }}\"";
+            sshClient.RunCommand(createBackupDirCmd);
+
+            // 3. 检查源目录是否存在且不为空
+            string checkSourceCmd = $"powershell -Command \"if ((Test-Path '{remoteDir}') -and (Get-ChildItem -Path '{remoteDir}' | Where-Object {{$_.Name -ne '{backupDirStr}'}})) {{ exit 0 }} else {{ exit 1 }}\"";
+            var checkResult = sshClient.RunCommand(checkSourceCmd);
+            if (checkResult.ExitStatus != 0)
+            {
+                _worker.ReportProgress(0, $"⚠️ 远程目录 {remoteDir} 不存在或为空, 跳过备份。");
+                return;
+            }
+
+            // 4. 压缩目录到备份目录，排除 backup 文件夹
+            string zipCmd = $"powershell -Command \"Compress-Archive -Path (Get-ChildItem -Path '{remoteDir}' -Exclude '{backupDirStr}' | ForEach-Object {{ $_.FullName }}) -DestinationPath '{backupZipPath}' -Force\"";
+            
+
+            var zipResult = sshClient.RunCommand(zipCmd);
+            _worker.ReportProgress(0, $"$ {zipCmd}\n{zipResult.Result}");
+
+            // 5. 保留最近SelectedServer.BackupCount个备份, 删除旧的备份
+            string cleanCmd = $@"powershell -Command ""$files = Get-ChildItem '{backupDir}' -File | Sort-Object LastWriteTime -Descending; if ($files.Count -gt {SelectedServer.BackupCount}) {{ $files = $files | Select-Object -Skip {SelectedServer.BackupCount}; foreach ($f in $files) {{ Remove-Item $f.FullName -Force }} }}"" ";
+            var r=sshClient.RunCommand(cleanCmd);
+            _worker.ReportProgress(0, $"$ {cleanCmd}\n{r.Result}\n{r.Error}");
+            _worker.ReportProgress(0, $"🗂️ 已备份 {remoteDir} 到 {backupZipPath}。");
         }
     }
     public class FilrOrDir : INotifyPropertyChanged

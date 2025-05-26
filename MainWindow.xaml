@@ -71,6 +71,7 @@
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
                             <RowDefinition Height="Auto"/>
+                            <RowDefinition Height="35"/>
                         </Grid.RowDefinitions>
                         <StackPanel Orientation="Horizontal" Grid.ColumnSpan="2" >
                             <StackPanel    Orientation="Horizontal" VerticalAlignment="Bottom" >
@@ -100,12 +101,10 @@
                             </DockPanel>
                         </StackPanel>
 
-                        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2">
-                            <DockPanel DockPanel.Dock="Left">
-                                <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务器部署路径:</TextBlock>
-                                <TextBox x:Name="txtRemotePath" Margin="0 0 5 0" Tag="服务器部署路径" Text="{Binding SelectedServer.RemotePath, Mode=TwoWay}"/>
-                            </DockPanel>
-                        </StackPanel>
+                        <DockPanel DockPanel.Dock="Left" Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="2">
+                            <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务器部署路径:</TextBlock>
+                            <TextBox x:Name="txtRemotePath" Margin="0 0 5 0" Tag="服务器部署路径" Text="{Binding SelectedServer.RemotePath, Mode=TwoWay}" />
+                        </DockPanel>
                         <DockPanel DockPanel.Dock="Left"  Grid.Column="0"  Grid.Row="3">
                             <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">服务(WinService)名称:</TextBlock>
                             <TextBox x:Name="txtServiceName" Margin="5" Tag="Windows服务名称" Text="{Binding SelectedServer.ServiceName, Mode=TwoWay}" IsEnabled="False"/>
@@ -114,6 +113,12 @@
                             <TextBlock Margin="0 0 5 0" VerticalAlignment="Center">Exe名称(需带exe):</TextBlock>
                             <TextBox x:Name="txtExeName" Margin="5" Tag="exe名称" Text="{Binding SelectedServer.ExeName, Mode=TwoWay}"/>
                         </DockPanel>
+                        <StackPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="4"  Orientation="Horizontal">
+                            <CheckBox Content="是否开启历史版本备份" DockPanel.Dock="Right" Style="{StaticResource ToggleButtonSwitch.Small}" Background="OrangeRed" Margin="0 0 5 0" IsChecked="{Binding SelectedServer.IsBackup, Mode=TwoWay}"></CheckBox>
+                            <TextBlock VerticalAlignment="Center" Margin="50 0 0 0 " Visibility="{Binding SelectedServer.IsBackup, Mode=TwoWay,Converter={StaticResource Boolean2VisibilityConverter}}">历史版本保留数量：</TextBlock>
+                            <hc:NumericUpDown x:Name="txtBackupCount" Width="60"  Tag="历史版本数量" Maximum="20" Minimum="1" Visibility="{Binding SelectedServer.IsBackup, Mode=TwoWay,Converter={StaticResource Boolean2VisibilityConverter}}" Value="{Binding SelectedServer.BackupCount, Mode=TwoWay}" Margin="0 3"/>
+                            <TextBlock VerticalAlignment="Center" Visibility="{Binding SelectedServer.IsBackup, Mode=TwoWay,Converter={StaticResource Boolean2VisibilityConverter}}">（1-20）</TextBlock>
+                        </StackPanel>
                     </Grid>
                 </GroupBox>
 

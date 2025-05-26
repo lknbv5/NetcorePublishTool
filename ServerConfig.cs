@@ -11,6 +11,8 @@ public class ServerConfig : INotifyPropertyChanged
     private string _remotePath;
     private string _serviceName;
     private string _exeName;
+    private bool _isBackup;
+    private int _backupCount=1;
 
 
     public string Name
@@ -24,6 +26,31 @@ public class ServerConfig : INotifyPropertyChanged
             ServiceName = $"API_{_name}";
         }
     }
+    /// <summary>
+    /// 是否开启备份功能
+    /// </summary>
+    public bool IsBackup
+    {
+        get => _isBackup;
+        set
+        {
+            _isBackup = value;
+            OnPropertyChanged(nameof(IsBackup));
+        }
+    }
+    /// <summary>
+    /// 备份文件数量
+    /// </summary>
+    public int BackupCount
+    {
+        get => _backupCount;
+        set
+        {
+            _backupCount = value;
+            OnPropertyChanged(nameof(BackupCount));
+        }
+    }
+
 
     public string ServerIP
     {
