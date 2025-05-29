@@ -1,10 +1,21 @@
+
+
+<img src="logo.ico" alt="Logo" style="zoom:15%;" />   **.Net Core PublishTool**
+### 项目截图
+
+<img src="./Screenshot/publish.png" style="zoom:55%;" />
+<img src="./Screenshot/sftp.png" style="zoom:55%;" />
+
 ### 项目说明
+
 #### 一、项目技术栈和工具包:
+
 - WPF(.Net Core 3.1)(项目框架)
 - HandyControl(UI组件)
 - SSH.Net(核心依赖包)
 
 #### 二、适用场景：
+
 适用于将.net Core 之后版本的Asp.net项目发布到Windows系统的远程服务器上。
 
 #### 三、远程服务器需要安装设置以下软件：

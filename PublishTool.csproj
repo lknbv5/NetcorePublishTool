@@ -53,6 +53,10 @@
     </None>
   </ItemGroup>
 
+  <ItemGroup>
+    <Folder Include="Screenshot\" />
+  </ItemGroup>
+
   <ProjectExtensions><VisualStudio><UserProperties /></VisualStudio></ProjectExtensions>
 
 </Project>
