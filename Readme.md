@@ -1,9 +1,9 @@
 
-<img src="logo.ico" alt="Logo" style="width:50px" /><span style="font-size:24px;font-weight:bold">.Net Core PublishTool</span>
+<img src="PublishTool/logo.ico" alt="Logo" style="width:50px" /><span style="font-size:24px;font-weight:bold">.Net Core PublishTool</span>
 ### 项目截图
 
-<img src="./Screenshot/publish.png" style="width:650px;" />
-<img src="./Screenshot/sftp.png" style="width:650px" />
+<img src="PublishTool/Screenshot/publish.png" style="width:650px;" />
+<img src="PublishTool/Screenshot/sftp.png" style="width:650px" />
 
 ### 项目说明
 
